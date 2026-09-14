@@ -1,0 +1,8 @@
+{
+  network: studionet,
+  rpc_url: https://studio.genlayer.com/api,
+  deployer: 0x70BEEf62DB5F4a766E07387666f95e384C57EcCF,
+  contract_address: 0xc0Bbd2d0a2C81CAa5D4cAC56ae378c809f3dF693,
+  transaction_hash: 0x4a0e5fe638e659f5b0d798a32fc054e940f45ea2c6ec9fee56c24a34a072e296,
+  explorer_url: https://explorer-studio.genlayer.com/address/0xc0Bbd2d0a2C81CAa5D4cAC56ae378c809f3dF693
+}
