@@ -404,21 +404,23 @@ export default function TrendPump({ onSwitchToEscrow }) {
               🤖 Auto-Launch from Tweet
             </button>
 
-            <button 
-              onClick={onSwitchToEscrow}
-              style={{
-                background: '#1e293b',
-                color: '#94a3b8',
-                border: '1px solid #334155',
-                padding: '8px 14px',
-                borderRadius: '8px',
-                fontWeight: '600',
-                fontSize: '0.85rem',
-                cursor: 'pointer',
-              }}
-            >
-              ⚖️ Switch to AgentEscrow
-            </button>
+            {onSwitchToEscrow && (
+              <button 
+                onClick={onSwitchToEscrow}
+                style={{
+                  background: '#1e293b',
+                  color: '#94a3b8',
+                  border: '1px solid #334155',
+                  padding: '8px 14px',
+                  borderRadius: '8px',
+                  fontWeight: '600',
+                  fontSize: '0.85rem',
+                  cursor: 'pointer',
+                }}
+              >
+                ⚖️ Switch to AgentEscrow
+              </button>
+            )}
           </div>
         </div>
       </header>

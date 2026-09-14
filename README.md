@@ -2,6 +2,7 @@
 
 ### Autonomous AI-Driven Memecoin Launchpad on GenLayer
 
+[![Live dApp](https://img.shields.io/badge/Live%20dApp-genfun.arcstones.xyz-green)](https://genfun.arcstones.xyz/)
 [![GenLayer StudioNet](https://img.shields.io/badge/GenLayer-StudioNet%200xc0Bbd2d0a2C81CAa5D4cAC56ae378c809f3dF693-blue)](https://explorer-studio.genlayer.com/address/0xc0Bbd2d0a2C81CAa5D4cAC56ae378c809f3dF693)
 [![Tests](https://img.shields.io/badge/GenVM%20Tests-10%2F10%20Passing-brightgreen)](https://github.com/Alicepoltora/trend-pump)
 [![Fair Launch](https://img.shields.io/badge/Fair%20Launch-100%25%20Zero--Dev-orange)](https://github.com/Alicepoltora/trend-pump)
@@ -58,6 +59,10 @@ pytest tests/direct/test_trend_pump.py -v
 10. `test_bonding_curve_graduation`: Crossing 80% supply marks token as graduated.
 
 ---
+
+## 🌐 Live Web Application
+
+- **Live dApp URL**: [https://genfun.arcstones.xyz/](https://genfun.arcstones.xyz/)
 
 ## 🛠️ Deployment & Verification
 
