@@ -1,0 +1,88 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <defs>
+    <!-- Metallic Outer Bevel -->
+    <linearGradient id="metalRim" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="20%" stop-color="#94a3b8"/>
+      <stop offset="40%" stop-color="#ffffff"/>
+      <stop offset="60%" stop-color="#475569"/>
+      <stop offset="80%" stop-color="#cbd5e1"/>
+      <stop offset="100%" stop-color="#1e293b"/>
+    </linearGradient>
+
+    <!-- Metallic Base with GenLayer Violet/Indigo Tint -->
+    <radialGradient id="metalCore" cx="45%" cy="35%" r="70%">
+      <stop offset="0%" stop-color="#4338ca"/>
+      <stop offset="40%" stop-color="#1e1b4b"/>
+      <stop offset="75%" stop-color="#0f172a"/>
+      <stop offset="100%" stop-color="#020617"/>
+    </radialGradient>
+
+    <!-- Chrome / Titanium Text Gradient -->
+    <linearGradient id="chromeText" x1="20%" y1="0%" x2="80%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="35%" stop-color="#e0e7ff"/>
+      <stop offset="50%" stop-color="#818cf8"/>
+      <stop offset="65%" stop-color="#ffffff"/>
+      <stop offset="85%" stop-color="#c7d2fe"/>
+      <stop offset="100%" stop-color="#6366f1"/>
+    </linearGradient>
+
+    <!-- Inner Metallic Stroke for Letters -->
+    <linearGradient id="textStroke" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#312e81" stop-opacity="0.6"/>
+    </linearGradient>
+
+    <!-- Specular Gloss Arc -->
+    <linearGradient id="specularGloss" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.35"/>
+      <stop offset="50%" stop-color="#ffffff" stop-opacity="0.08"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+
+    <!-- 3D Shadow -->
+    <filter id="metalShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="4" flood-color="#000000" flood-opacity="0.5"/>
+    </filter>
+    <filter id="textGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#000000" flood-opacity="0.6"/>
+    </filter>
+  </defs>
+
+  <!-- Outer Shadow & Base Rim -->
+  <circle cx="64" cy="64" r="60" fill="url(#metalRim)" filter="url(#metalShadow)"/>
+
+  <!-- Inner Recessed Groove -->
+  <circle cx="64" cy="64" r="56" fill="#020617"/>
+
+  <!-- Metallic Core Coin -->
+  <circle cx="64" cy="64" r="54" fill="url(#metalCore)"/>
+
+  <!-- Concentric Precision Track -->
+  <circle cx="64" cy="64" r="51" fill="none" stroke="rgba(255, 255, 255, 0.12)" stroke-width="1" stroke-dasharray="3 3"/>
+
+  <!-- Upper Glass / Specular Sheen (Curved highlight) -->
+  <path d="M 12 60 A 54 54 0 0 1 116 60 Q 64 82 12 60 Z" fill="url(#specularGloss)"/>
+
+  <!-- Modern Sharp Metallic "AE" Monogram -->
+  <g filter="url(#textGlow)">
+    <text
+      x="64"
+      y="79"
+      text-anchor="middle"
+      font-family="-apple-system, BlinkMacSystemFont, 'Inter', 'Montserrat', 'Segoe UI', sans-serif"
+      font-size="46"
+      font-weight="900"
+      letter-spacing="-1px"
+      fill="url(#chromeText)"
+      stroke="url(#textStroke)"
+      stroke-width="1.2"
+      paint-order="stroke fill"
+    >AE</text>
+  </g>
+
+  <!-- Bottom Subtle Balance / Scale Accent -->
+  <circle cx="64" cy="98" r="2.5" fill="#818cf8"/>
+  <line x1="46" y1="98" x2="82" y2="98" stroke="#818cf8" stroke-width="1.5" stroke-linecap="round" opacity="0.75"/>
+</svg>

@@ -1,0 +1,802 @@
+/* TrendPump — pump.fun-Style High Octane Theme */
+
+.trendpump-container {
+  min-height: 100vh;
+  background: #090c10;
+  color: #f0f6fc;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  padding-bottom: 80px;
+}
+
+/* ─── Ticker Tape ────────────────────────────────────────── */
+.tp-ticker-tape {
+  background: #111722;
+  border-bottom: 1px solid #1f293d;
+  padding: 8px 16px;
+  overflow: hidden;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.82rem;
+  color: #8b949e;
+}
+
+.tp-ticker-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tp-ticker-symbol {
+  color: #4ade80;
+  font-weight: 700;
+}
+
+.tp-ticker-up {
+  color: #22c55e;
+}
+
+/* ─── Top Bar & Stats ────────────────────────────────────── */
+.tp-header {
+  border-bottom: 1px solid #1e2638;
+  background: rgba(13, 18, 27, 0.85);
+  backdrop-filter: blur(12px);
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  padding: 12px 24px;
+}
+
+.tp-header-inner {
+  max-width: 1400px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.tp-logo-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.tp-logo-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #22c55e, #10b981);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  box-shadow: 0 0 16px rgba(34, 197, 94, 0.35);
+}
+
+.tp-logo-title {
+  font-size: 1.3rem;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tp-badge-genlayer {
+  font-size: 0.7rem;
+  background: rgba(34, 197, 94, 0.15);
+  color: #4ade80;
+  border: 1px solid rgba(74, 222, 128, 0.3);
+  padding: 2px 8px;
+  border-radius: 9999px;
+  font-family: ui-monospace, monospace;
+}
+
+.tp-network-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #151d2c;
+  border: 1px solid #233047;
+  padding: 6px 14px;
+  border-radius: 9999px;
+  font-size: 0.8rem;
+  font-family: ui-monospace, monospace;
+}
+
+.tp-live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #22c55e;
+  box-shadow: 0 0 10px #22c55e;
+  animation: tp-pulse 1.8s infinite;
+}
+
+@keyframes tp-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.85); }
+}
+
+.tp-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.tp-btn-faucet {
+  background: #1c2738;
+  color: #e2e8f0;
+  border: 1px solid #2d3e58;
+  padding: 7px 14px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tp-btn-faucet:hover {
+  background: #25344c;
+  border-color: #4ade80;
+  color: #ffffff;
+}
+
+.tp-btn-launch {
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+  color: #000000;
+  border: none;
+  padding: 8px 18px;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 4px 12px rgba(34, 197, 94, 0.25);
+}
+
+.tp-btn-launch:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(34, 197, 94, 0.4);
+}
+
+/* ─── Hero & King of the Hill ────────────────────────────── */
+.tp-main {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.tp-banner {
+  background: radial-gradient(circle at 80% 20%, rgba(34, 197, 94, 0.12) 0%, transparent 60%),
+              linear-gradient(180deg, #111722 0%, #0d121b 100%);
+  border: 1px solid #1f2a3e;
+  border-radius: 16px;
+  padding: 24px 32px;
+  margin-bottom: 24px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.tp-banner-text h1 {
+  font-size: 1.8rem;
+  font-weight: 800;
+  margin: 0 0 6px 0;
+  color: #ffffff;
+}
+
+.tp-banner-text p {
+  color: #94a3b8;
+  font-size: 0.95rem;
+  margin: 0;
+  max-width: 680px;
+  line-height: 1.5;
+}
+
+.tp-banner-stats {
+  display: flex;
+  gap: 24px;
+}
+
+.tp-stat-box {
+  background: #161e2d;
+  border: 1px solid #233045;
+  border-radius: 12px;
+  padding: 12px 20px;
+  min-width: 130px;
+}
+
+.tp-stat-val {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: #4ade80;
+  font-family: ui-monospace, monospace;
+}
+
+.tp-stat-label {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  margin-top: 2px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* ─── Influencer Live Tweet Radar ────────────────────────── */
+.tp-radar-section {
+  margin-bottom: 28px;
+}
+
+.tp-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.tp-section-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #f1f5f9;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tp-radar-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: 16px;
+}
+
+.tp-radar-card {
+  background: #111724;
+  border: 1px solid #1f2a3f;
+  border-radius: 14px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 12px;
+  transition: all 0.2s;
+}
+
+.tp-radar-card:hover {
+  border-color: #3b82f6;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+.tp-tweet-author {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.tp-tweet-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 2px solid #2d3748;
+}
+
+.tp-author-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.tp-author-name {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.tp-verified-check {
+  color: #38bdf8;
+  font-size: 0.9rem;
+}
+
+.tp-author-handle {
+  color: #64748b;
+  font-size: 0.8rem;
+}
+
+.tp-tweet-text {
+  font-size: 0.9rem;
+  line-height: 1.45;
+  color: #e2e8f0;
+  background: #0d121c;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border-left: 3px solid #38bdf8;
+}
+
+.tp-radar-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.8rem;
+}
+
+.tp-virality-badge {
+  background: rgba(34, 197, 94, 0.15);
+  color: #4ade80;
+  border: 1px solid rgba(74, 222, 128, 0.3);
+  padding: 3px 10px;
+  border-radius: 9999px;
+  font-weight: 700;
+  font-family: ui-monospace, monospace;
+}
+
+.tp-btn-radar-launch {
+  background: #1e293b;
+  color: #38bdf8;
+  border: 1px solid #334155;
+  padding: 5px 12px;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.tp-btn-radar-launch:hover {
+  background: #38bdf8;
+  color: #000000;
+}
+
+/* ─── Tokens Grid (pump.fun style) ───────────────────────── */
+.tp-tokens-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+  gap: 20px;
+}
+
+.tp-token-card {
+  background: #111722;
+  border: 1px solid #1f2a3e;
+  border-radius: 16px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 16px;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.25s ease;
+}
+
+.tp-token-card:hover {
+  border-color: #4ade80;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4), 0 0 15px rgba(74, 222, 128, 0.15);
+}
+
+.tp-card-king {
+  border-color: #fbbf24;
+  background: radial-gradient(circle at 90% 10%, rgba(251, 191, 36, 0.08) 0%, transparent 50%),
+              linear-gradient(180deg, #161c28 0%, #111722 100%);
+}
+
+.tp-card-king:hover {
+  border-color: #f59e0b;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4), 0 0 20px rgba(251, 191, 36, 0.25);
+}
+
+.tp-king-tag {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: linear-gradient(135deg, #fbbf24, #d97706);
+  color: #000000;
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 3px 10px;
+  border-radius: 9999px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  box-shadow: 0 2px 8px rgba(251, 191, 36, 0.4);
+}
+
+.tp-token-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.tp-token-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #1e293b, #0f172a);
+  border: 1px solid #334155;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.7rem;
+  flex-shrink: 0;
+}
+
+.tp-token-identity {
+  flex: 1;
+}
+
+.tp-token-name-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 2px;
+}
+
+.tp-token-name {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.tp-token-ticker {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #4ade80;
+  font-family: ui-monospace, monospace;
+}
+
+.tp-token-lore {
+  font-size: 0.85rem;
+  color: #94a3b8;
+  line-height: 1.4;
+  margin: 6px 0 0 0;
+}
+
+/* ─── Embedded Tweet Box inside Card ─────────────────────── */
+.tp-card-tweet {
+  background: #0b0f17;
+  border: 1px solid #1a2334;
+  border-radius: 10px;
+  padding: 10px 14px;
+}
+
+.tp-card-tweet-author {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.78rem;
+  color: #64748b;
+  margin-bottom: 4px;
+}
+
+.tp-card-tweet-text {
+  font-size: 0.84rem;
+  color: #cbd5e1;
+  line-height: 1.35;
+  font-style: italic;
+}
+
+/* ─── Bonding Curve Progress ─────────────────────────────── */
+.tp-curve-box {
+  background: #0e1420;
+  border: 1px solid #1c2639;
+  border-radius: 10px;
+  padding: 12px;
+}
+
+.tp-curve-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  margin-bottom: 6px;
+}
+
+.tp-curve-label {
+  color: #94a3b8;
+  font-weight: 600;
+}
+
+.tp-curve-pct {
+  color: #4ade80;
+  font-weight: 800;
+  font-family: ui-monospace, monospace;
+}
+
+.tp-progress-bar-bg {
+  width: 100%;
+  height: 8px;
+  background: #1a2232;
+  border-radius: 9999px;
+  overflow: hidden;
+  position: relative;
+}
+
+.tp-progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #22c55e, #10b981);
+  border-radius: 9999px;
+  transition: width 0.4s ease;
+}
+
+.tp-curve-stats-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  color: #64748b;
+  margin-top: 8px;
+  font-family: ui-monospace, monospace;
+}
+
+/* ─── Card Actions ───────────────────────────────────────── */
+.tp-card-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.tp-btn-trade {
+  flex: 1;
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+  color: #000000;
+  border: none;
+  padding: 10px;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: center;
+}
+
+.tp-btn-trade:hover {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+}
+
+.tp-btn-burn-check {
+  background: #1a2333;
+  color: #fb923c;
+  border: 1px solid #334155;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tp-btn-burn-check:hover {
+  background: #233045;
+  border-color: #fb923c;
+  color: #fed7aa;
+}
+
+/* ─── Modal / Trading Terminal ───────────────────────────── */
+.tp-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(8px);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.tp-modal-box {
+  background: #111724;
+  border: 1px solid #23324c;
+  border-radius: 20px;
+  width: 100%;
+  max-width: 640px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+  padding: 24px;
+  position: relative;
+}
+
+.tp-modal-close {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: #1a2334;
+  border: 1px solid #2d3b52;
+  color: #94a3b8;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 1.1rem;
+}
+
+.tp-modal-close:hover {
+  background: #25334a;
+  color: #ffffff;
+}
+
+.tp-tab-row {
+  display: flex;
+  gap: 8px;
+  background: #0b0f17;
+  padding: 4px;
+  border-radius: 10px;
+  margin-bottom: 20px;
+}
+
+.tp-tab-btn {
+  flex: 1;
+  padding: 10px;
+  border-radius: 8px;
+  border: none;
+  font-weight: 700;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: transparent;
+  color: #64748b;
+}
+
+.tp-tab-active-buy {
+  background: #22c55e;
+  color: #000000;
+}
+
+.tp-tab-active-sell {
+  background: #ef4444;
+  color: #ffffff;
+}
+
+.tp-input-group {
+  margin-bottom: 16px;
+}
+
+.tp-input-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.82rem;
+  color: #94a3b8;
+  margin-bottom: 6px;
+}
+
+.tp-input-box {
+  background: #0b0f17;
+  border: 1px solid #1f2a3e;
+  border-radius: 10px;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.tp-input-field {
+  background: transparent;
+  border: none;
+  color: #ffffff;
+  font-size: 1.25rem;
+  font-weight: 700;
+  width: 100%;
+  outline: none;
+  font-family: ui-monospace, monospace;
+}
+
+.tp-input-badge {
+  font-weight: 800;
+  font-size: 0.95rem;
+  color: #4ade80;
+  padding-left: 10px;
+}
+
+.tp-swap-summary {
+  background: #0c121d;
+  border: 1px solid #1b2537;
+  border-radius: 10px;
+  padding: 12px 16px;
+  margin-bottom: 20px;
+  font-size: 0.85rem;
+}
+
+.tp-summary-line {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 6px;
+  color: #94a3b8;
+}
+
+.tp-summary-line:last-child {
+  margin-bottom: 0;
+}
+
+.tp-summary-val {
+  color: #ffffff;
+  font-weight: 700;
+  font-family: ui-monospace, monospace;
+}
+
+.tp-btn-submit-swap {
+  width: 100%;
+  padding: 14px;
+  border-radius: 10px;
+  border: none;
+  font-size: 1.05rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.tp-btn-submit-buy {
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+  color: #000000;
+}
+
+.tp-btn-submit-sell {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  color: #ffffff;
+}
+
+/* ─── Consensus Simulation Animation ─────────────────────── */
+.tp-consensus-modal {
+  text-align: center;
+  padding: 30px 20px;
+}
+
+.tp-spinner-large {
+  width: 60px;
+  height: 60px;
+  border: 4px solid #1e293b;
+  border-top-color: #22c55e;
+  border-radius: 50%;
+  animation: tp-spin 0.8s linear infinite;
+  margin: 0 auto 20px auto;
+}
+
+@keyframes tp-spin {
+  to { transform: rotate(360deg); }
+}
+
+.tp-step-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 24px 0;
+  text-align: left;
+}
+
+.tp-step-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #0b0f17;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  border: 1px solid #1a2334;
+}
+
+.tp-step-done {
+  border-color: rgba(34, 197, 94, 0.4);
+  color: #4ade80;
+}
+
+.tp-step-active {
+  border-color: #38bdf8;
+  color: #38bdf8;
+  font-weight: 700;
+}
