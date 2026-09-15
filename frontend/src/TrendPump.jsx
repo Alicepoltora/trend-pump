@@ -574,7 +574,7 @@ export default function TrendPump({ onSwitchToEscrow }) {
             <div className="tp-logo-icon">🚀</div>
             <div>
               <div className="tp-logo-title">
-                TrendPump
+                <span>Gen<span style={{ color: '#10b981' }}>Fun</span></span>
                 <span className="tp-badge-genlayer">
                   <span>⚡</span> GenLayer Intelligent Contract
                 </span>
