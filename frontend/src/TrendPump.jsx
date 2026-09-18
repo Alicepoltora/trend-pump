@@ -1,80 +1,24 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import './TrendPump.css';
-
-const TRENDPUMP_CONTRACT = '0xc0Bbd2d0a2C81CAa5D4cAC56ae378c809f3dF693';
-const EXPLORER_URL = `https://explorer-studio.genlayer.com/address/${TRENDPUMP_CONTRACT}`;
-
-const INITIAL_TOKENS = [
-  {
-    id: 0,
-    ticker: '$MARS',
-    name: 'Mars Multiplanetary Coin',
-    icon: '🪐',
-    lore: "Elon Musk's Starship tweet fuels humanity's push to colonize Mars. The cosmos calls—will you answer?",
-    origin_author: '@elonmusk',
-    author_name: 'Elon Musk',
-    avatar: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=100&auto=format&fit=crop&q=80',
-    origin_tweet_text: 'Starship will make life multiplanetary on Mars. Humanity belongs among the stars.',
-    origin_tweet_url: 'https://x.com/elonmusk/status/1880000000000000000',
-    tweet_time: '2h ago',
-    likes: '48.2K',
-    retweets: '9.4K',
-    views: '2.4M',
-    virality_score: 92,
-    total_supply: 900000000, // 100M burned in surge!
-    circulating_supply: 450000000,
-    reserve_balance: 1420000,
-    is_graduated: false,
-    surge_burns_count: 1,
-    is_king: true,
-  },
-  {
-    id: 1,
-    ticker: '$GROK',
-    name: 'Grok Quantum Reasoning',
-    icon: '🤖',
-    lore: "Spawned from xAI's real-time reasoning cluster announcement. Unfiltered AI intellect on-chain.",
-    origin_author: '@elonmusk',
-    author_name: 'Elon Musk',
-    avatar: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=100&auto=format&fit=crop&q=80',
-    origin_tweet_text: 'Grok 3 is trained and entering continuous reasoning mode. Next level frontier intelligence.',
-    origin_tweet_url: 'https://x.com/elonmusk/status/1880000000000000001',
-    tweet_time: '4h ago',
-    likes: '35.1K',
-    retweets: '7.8K',
-    views: '1.8M',
-    virality_score: 88,
-    total_supply: 1000000000,
-    circulating_supply: 220000000,
-    reserve_balance: 680000,
-    is_graduated: false,
-    surge_burns_count: 0,
-    is_king: false,
-  },
-  {
-    id: 2,
-    ticker: '$LEAN',
-    name: 'Lean EVM Protocol',
-    icon: '⚡',
-    lore: 'Inspired by Vitalik Buterin’s manifesto on cryptographic minimalism and light-client validation.',
-    origin_author: '@vitalikbuterin',
-    author_name: 'Vitalik Buterin',
-    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80',
-    origin_tweet_text: 'Simplifying core protocol layers: the future of decentralized verification is lean and deterministic.',
-    origin_tweet_url: 'https://x.com/vitalikbuterin/status/1880000000000000002',
-    tweet_time: '6h ago',
-    likes: '19.4K',
-    retweets: '4.1K',
-    views: '920K',
-    virality_score: 85,
-    total_supply: 1000000000,
-    circulating_supply: 160000000,
-    reserve_balance: 420000,
-    is_graduated: false,
-    surge_burns_count: 0,
-    is_king: false,
-  },
-];
+import {
+  CONTRACT_ADDRESS,
+  DEPLOY_TX_HASH,
+  EXPLORER_URL,
+  RPC_URL,
+  CHAIN_ID,
+  CHAIN_HEX,
+  DEFAULT_DEV_KEY,
+  DEFAULT_DEV_ADDR,
+  fetchAllTokens,
+  buyTokensOnChain,
+  sellTokensOnChain,
+  scanAndLaunchOnChain,
+  detectSurgeOnChain,
+  fundAccount,
+  getAccountBalance,
+  seedInitialTokensOnChain,
+  CANONICAL_FALLBACK_TOKENS,
+} from './genlayer';
 
 const PRESET_TWEETS = [
   {
@@ -113,10 +57,14 @@ const PRESET_TWEETS = [
 ];
 
 export default function TrendPump({ onSwitchToEscrow }) {
-  const [tokens, setTokens] = useState(INITIAL_TOKENS);
-  const [userGenBalance, setUserGenBalance] = useState(1000000); // 1,000,000 wei starting faucet
-  const [userTokenBalances, setUserTokenBalances] = useState({ 0: 10000 });
-  
+  const [tokens, setTokens] = useState(CANONICAL_FALLBACK_TOKENS);
+  const [walletAddress, setWalletAddress] = useState(DEFAULT_DEV_ADDR);
+  const [walletKey, setWalletKey] = useState(DEFAULT_DEV_KEY);
+  const [walletType, setWalletType] = useState('dev'); // 'dev' | 'metamask'
+  const [userGenBalance, setUserGenBalance] = useState('99.9');
+  const [userTokenBalances, setUserTokenBalances] = useState({ 0: 10000000, 1: 5000000, 2: 5000000 });
+  const [walletModalOpen, setWalletModalOpen] = useState(false);
+
   // Search & Filter
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('all'); // 'all', 'hot', 'king', 'graduating'
@@ -125,7 +73,7 @@ export default function TrendPump({ onSwitchToEscrow }) {
   const [tradeModalToken, setTradeModalToken] = useState(null);
   const [tradeTab, setTradeTab] = useState('buy');
   const [tradeAmount, setTradeAmount] = useState('50000');
-  
+
   const [launchModalOpen, setLaunchModalOpen] = useState(false);
   const [customAuthor, setCustomAuthor] = useState('@elonmusk');
   const [customTweetUrl, setCustomTweetUrl] = useState('https://x.com/elonmusk/status/1880000000000000003');
@@ -139,83 +87,125 @@ export default function TrendPump({ onSwitchToEscrow }) {
   const [surgeSuccess, setSurgeSuccess] = useState(null);
 
   const [toastMessage, setToastMessage] = useState('');
-  const [networkStatus, setNetworkStatus] = useState(null);
+  const [toastTx, setToastTx] = useState(null);
   const [isTrading, setIsTrading] = useState(false);
-  const [lastTxHash, setLastTxHash] = useState(null);
+  const [lastTxHash, setLastTxHash] = useState(DEPLOY_TX_HASH);
+  const [networkConnected, setNetworkConnected] = useState(true);
 
-  const fetchNetworkData = async () => {
+  const showToast = useCallback((msg, tx = null) => {
+    setToastMessage(msg);
+    setToastTx(tx);
+    setTimeout(() => {
+      setToastMessage('');
+      setToastTx(null);
+    }, 6000);
+  }, []);
+
+  // Fetch tokens and balance from blockchain
+  const refreshOnChainData = useCallback(async () => {
     try {
-      const res = await fetch('/api/status');
-      if (res.ok) {
-        const data = await res.json();
-        setNetworkStatus(data);
-        if (data.contract_gen_balance !== undefined) {
-          setUserGenBalance(data.contract_gen_balance);
-        }
-      }
-      const tokRes = await fetch('/api/tokens');
-      if (tokRes.ok) {
-        const tokData = await tokRes.json();
-        if (tokData.tokens && tokData.tokens.length > 0) {
-          setTokens(prev => {
-            const onChainMap = new Map(tokData.tokens.map(t => [t.id, t]));
-            const updated = prev.map(t => {
-              if (onChainMap.has(t.id)) {
-                const oct = onChainMap.get(t.id);
-                onChainMap.delete(t.id);
-                return {
-                  ...t,
-                  circulating_supply: oct.circulating_supply,
-                  reserve_balance: oct.reserve_balance,
-                  total_supply: oct.total_supply,
-                  surge_burns_count: oct.surge_burns_count,
-                  is_graduated: oct.is_graduated,
-                };
-              }
-              return t;
-            });
-            for (const [id, oct] of onChainMap) {
-              updated.unshift({
-                ...oct,
-                icon: oct.ticker === '$MARS' ? '🪐' : '🚀',
-                author_name: (oct.origin_author || '').replace('@', ''),
-                avatar: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=100&auto=format&fit=crop&q=80',
-                tweet_time: 'On-Chain Live',
-                likes: '50K+',
-                retweets: '10K+',
-                views: '2.5M',
-                is_king: id === 0,
-              });
+      const onChainTokens = await fetchAllTokens();
+      if (Array.isArray(onChainTokens) && onChainTokens.length > 0) {
+        setTokens(prev => {
+          const map = new Map(onChainTokens.map(t => [t.id, t]));
+          return prev.map(p => {
+            if (map.has(p.id)) {
+              const oct = map.get(p.id);
+              map.delete(p.id);
+              return { ...p, ...oct };
             }
-            return updated;
-          });
-
-          const newBalMap = {};
-          tokData.tokens.forEach(t => {
-            if (t.user_balance !== undefined) {
-              newBalMap[t.id] = t.user_balance;
-            }
-          });
-          setUserTokenBalances(prev => ({ ...prev, ...newBalMap }));
-        }
+            return p;
+          }).concat(Array.from(map.values()).map(oct => ({
+            ...oct,
+            icon: oct.ticker === '$MARS' ? '🪐' : oct.ticker === '$GROK' ? '🤖' : oct.ticker === '$LEAN' ? '⚡' : '🚀',
+            avatar: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=100&auto=format&fit=crop&q=80',
+            likes: '50K+',
+            retweets: '10K+',
+            views: '2.5M',
+            is_king: oct.id === 0,
+          })));
+        });
       }
+      setNetworkConnected(true);
     } catch (e) {
-      console.warn('Live API connection notice:', e);
+      console.warn('Refresh error:', e);
+      setNetworkConnected(false);
+    }
+
+    if (walletAddress) {
+      try {
+        const bal = await getAccountBalance(walletAddress);
+        setUserGenBalance(bal);
+      } catch (e) {
+        // ignore
+      }
+    }
+  }, [walletAddress]);
+
+  useEffect(() => {
+    refreshOnChainData();
+    const interval = setInterval(refreshOnChainData, 12000);
+    return () => clearInterval(interval);
+  }, [refreshOnChainData]);
+
+  // Connect MetaMask
+  const handleConnectMetaMask = async () => {
+    if (!window.ethereum) {
+      showToast('⚠️ MetaMask not found. Please install MetaMask or use 1-Click Dev Account.');
+      return;
+    }
+    try {
+      showToast('🦊 Requesting MetaMask connection...');
+      const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+      if (accounts && accounts[0]) {
+        const addr = accounts[0];
+        setWalletAddress(addr);
+        setWalletType('metamask');
+        setWalletKey(null);
+
+        // Switch or add Studio Next Chain 61997
+        try {
+          await window.ethereum.request({
+            method: 'wallet_switchEthereumChain',
+            params: [{ chainId: CHAIN_HEX }],
+          });
+        } catch (switchErr) {
+          if (switchErr.code === 4902) {
+            await window.ethereum.request({
+              method: 'wallet_addEthereumChain',
+              params: [
+                {
+                  chainId: CHAIN_HEX,
+                  chainName: 'GenLayer Studio Next',
+                  nativeCurrency: { name: 'GEN', symbol: 'GEN', decimals: 18 },
+                  rpcUrls: [RPC_URL],
+                  blockExplorerUrls: [EXPLORER_URL],
+                },
+              ],
+            });
+          }
+        }
+        const bal = await getAccountBalance(addr);
+        setUserGenBalance(bal);
+        showToast(`✓ Connected MetaMask: ${addr.slice(0, 6)}...${addr.slice(-4)}`);
+        setWalletModalOpen(false);
+      }
+    } catch (err) {
+      console.error('MetaMask connection error:', err);
+      showToast(`⚠️ MetaMask error: ${err.message || err}`);
     }
   };
 
-  useEffect(() => {
-    fetchNetworkData();
-    const interval = setInterval(fetchNetworkData, 10000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const showToast = (msg) => {
-    setToastMessage(msg);
-    setTimeout(() => setToastMessage(''), 4500);
+  const handleConnectDev = () => {
+    setWalletAddress(DEFAULT_DEV_ADDR);
+    setWalletKey(DEFAULT_DEV_KEY);
+    setWalletType('dev');
+    getAccountBalance(DEFAULT_DEV_ADDR).then(setUserGenBalance);
+    showToast(`✓ Connected 1-Click Studio Next Dev Account`);
+    setWalletModalOpen(false);
   };
 
-  // ─── Mathematical Bonding Curve calculation ──────────────
+  // Mathematical Bonding Curve calculation
   const calcBuyCost = (currSupply, amount) => {
     const s = Number(currSupply);
     const n = Number(amount) || 0;
@@ -234,7 +224,7 @@ export default function TrendPump({ onSwitchToEscrow }) {
 
   // Trade quote
   const tradeQuote = useMemo(() => {
-    if (!tradeModalToken) return { costOrRefund: 0, newPricePerToken: 0 };
+    if (!tradeModalToken) return { costOrRefund: 0, type: 'cost' };
     const n = Number(tradeAmount) || 0;
     if (tradeTab === 'buy') {
       const cost = calcBuyCost(tradeModalToken.circulating_supply, n);
@@ -249,11 +239,11 @@ export default function TrendPump({ onSwitchToEscrow }) {
   const filteredTokens = useMemo(() => {
     return tokens.filter((t) => {
       const q = searchQuery.toLowerCase().trim();
-      const matchesSearch = !q || 
-        t.ticker.toLowerCase().includes(q) || 
-        t.name.toLowerCase().includes(q) || 
+      const matchesSearch = !q ||
+        t.ticker.toLowerCase().includes(q) ||
+        t.name.toLowerCase().includes(q) ||
         t.origin_author.toLowerCase().includes(q);
-      
+
       if (!matchesSearch) return false;
 
       if (activeCategory === 'king') return t.is_king;
@@ -263,7 +253,7 @@ export default function TrendPump({ onSwitchToEscrow }) {
     });
   }, [tokens, searchQuery, activeCategory]);
 
-  // Handle Trade Execution with Live GenLayer StudioNet
+  // Handle Trade Execution directly On-Chain
   const handleExecuteTrade = async () => {
     const amount = Number(tradeAmount);
     if (!amount || amount <= 0) {
@@ -274,67 +264,52 @@ export default function TrendPump({ onSwitchToEscrow }) {
     const t = tradeModalToken;
     const tokenId = t.id;
     setIsTrading(true);
-    showToast(`⏳ Submitting ${tradeTab.toUpperCase()} transaction to GenLayer StudioNet consensus...`);
+    showToast(`⏳ Submitting on-chain ${tradeTab.toUpperCase()} transaction to GenLayer Studio Next...`);
 
     try {
-      const endpoint = tradeTab === 'buy' ? '/api/buy' : '/api/sell';
-      const res = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token_id: tokenId, token_amount: amount }),
-      });
-      const result = await res.json();
-
-      if (res.ok && result.success) {
-        setLastTxHash(result.transaction_hash);
-        showToast(`🎉 On-Chain Tx Confirmed! Tx: ${result.transaction_hash.slice(0, 10)}... (Explorer link in header)`);
-        await fetchNetworkData();
-        setTradeModalToken(null);
-      } else {
-        throw new Error(result.error || 'Transaction failed');
-      }
-    } catch (err) {
-      console.warn('Trade live RPC notice, applying fallback execution:', err);
+      let res;
       if (tradeTab === 'buy') {
-        const cost = tradeQuote.costOrRefund;
-        setUserGenBalance(prev => Math.max(0, prev - cost));
-        setUserTokenBalances(prev => ({ ...prev, [tokenId]: (prev[tokenId] || 0) + amount }));
-        setTokens(prev => prev.map(tok => tok.id === tokenId ? { ...tok, circulating_supply: tok.circulating_supply + amount, reserve_balance: tok.reserve_balance + cost } : tok));
-        showToast(`🎉 Bought ${amount.toLocaleString()} ${t.ticker}!`);
+        res = await buyTokensOnChain(walletKey, tokenId, amount);
       } else {
-        const refund = tradeQuote.costOrRefund;
-        const userBal = userTokenBalances[tokenId] || 0;
-        setUserTokenBalances(prev => ({ ...prev, [tokenId]: Math.max(0, userBal - amount) }));
-        setUserGenBalance(prev => prev + refund);
-        setTokens(prev => prev.map(tok => tok.id === tokenId ? { ...tok, circulating_supply: Math.max(0, tok.circulating_supply - amount) } : tok));
-        showToast(`💰 Sold ${amount.toLocaleString()} ${t.ticker}!`);
+        res = await sellTokensOnChain(walletKey, tokenId, amount);
       }
+
+      const txHash = res.txHash;
+      setLastTxHash(txHash);
+
+      // Update balances
+      if (tradeTab === 'buy') {
+        setUserTokenBalances(prev => ({ ...prev, [tokenId]: (prev[tokenId] || 0) + amount }));
+        showToast(`🎉 On-Chain Buy Confirmed! Bought ${amount.toLocaleString()} ${t.ticker}`, txHash);
+      } else {
+        setUserTokenBalances(prev => ({ ...prev, [tokenId]: Math.max(0, (prev[tokenId] || 0) - amount) }));
+        showToast(`💰 On-Chain Sell Confirmed! Sold ${amount.toLocaleString()} ${t.ticker}`, txHash);
+      }
+
       setTradeModalToken(null);
+      await refreshOnChainData();
+    } catch (err) {
+      console.error('On-chain trade error:', err);
+      showToast(`⚠️ Trade failed: ${err.message || err}`);
     } finally {
       setIsTrading(false);
     }
   };
 
-  // Claim faucet with Live GenLayer StudioNet
+  // Claim faucet on Studio Next
   const handleClaimFaucet = async () => {
-    showToast('⏳ Requesting 1,000,000 GEN from on-chain faucet...');
+    showToast('⏳ Requesting 50 GEN from Studio Next RPC faucet...');
     try {
-      const res = await fetch('/api/faucet', { method: 'POST' });
-      const data = await res.json();
-      if (res.ok && data.success) {
-        setLastTxHash(data.transaction_hash);
-        showToast(`🎁 Faucet confirmed on StudioNet! Tx: ${data.transaction_hash.slice(0, 10)}...`);
-        await fetchNetworkData();
-      } else {
-        throw new Error(data.error || 'Faucet request failed');
-      }
+      await fundAccount(walletAddress, '50');
+      const bal = await getAccountBalance(walletAddress);
+      setUserGenBalance(bal);
+      showToast(`🎁 Successfully received 50 GEN on Studio Next! Balance: ${bal} GEN`);
     } catch (e) {
-      setUserGenBalance(prev => prev + 1000000);
-      showToast('🎁 Claimed 1,000,000 GEN wei!');
+      showToast(`⚠️ Faucet notice: ${e.message}`);
     }
   };
 
-  // Autonomous Launch with Live GenLayer StudioNet
+  // Autonomous Launch with Live GenLayer Studio Next Consensus
   const handleAutonomousLaunch = async () => {
     if (!customTweetText.trim()) {
       showToast('⚠️ Tweet text cannot be empty');
@@ -346,156 +321,81 @@ export default function TrendPump({ onSwitchToEscrow }) {
 
     const stepInterval = setInterval(() => {
       setLaunchStep(s => (s < 3 ? s + 1 : s));
-    }, 2500);
+    }, 2000);
 
     try {
-      const res = await fetch('/api/launch', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          tweet_url: customTweetUrl,
-          tweet_text: customTweetText,
-          author: customAuthor,
-        }),
+      showToast('🤖 Submitting tweet to GenLayer GenVM consensus radar...');
+      const res = await scanAndLaunchOnChain(walletKey, {
+        url: customTweetUrl,
+        text: customTweetText,
+        author: customAuthor,
       });
-      clearInterval(stepInterval);
-      const data = await res.json();
 
-      if (res.ok && data.success) {
-        setLaunchStep(4);
-        setLastTxHash(data.transaction_hash);
-        showToast(`🚀 New token coined & deployed on GenLayer StudioNet! Tx: ${data.transaction_hash.slice(0, 10)}...`);
-        await fetchNetworkData();
-        setTimeout(() => {
-          setIsLaunching(false);
-          setLaunchModalOpen(false);
-          setLaunchStep(0);
-        }, 1500);
-        return;
-      }
-      throw new Error(data.error || 'Launch failed');
+      clearInterval(stepInterval);
+      setLaunchStep(4);
+      setLastTxHash(res.txHash);
+      showToast(`🚀 AI Consensus Passed! New Memecoin Coined on Chain 61997!`, res.txHash);
+
+      setTimeout(() => {
+        setIsLaunching(false);
+        setLaunchModalOpen(false);
+        setLaunchStep(0);
+        refreshOnChainData();
+      }, 1500);
     } catch (err) {
       clearInterval(stepInterval);
-      console.warn('Launch API notice, executing fallback:', err);
+      setIsLaunching(false);
+      setLaunchStep(0);
+      console.error('Launch error:', err);
+      showToast(`⚠️ On-Chain Launch failed: ${err.message || err}`);
     }
-    if (!customTweetText.trim()) {
-      showToast('⚠️ Tweet text cannot be empty');
-      return;
-    }
-
-    setIsLaunching(true);
-    setLaunchStep(1);
-
-    setTimeout(() => {
-      setLaunchStep(2);
-      setTimeout(() => {
-        setLaunchStep(3);
-        setTimeout(() => {
-          setLaunchStep(4);
-          setTimeout(() => {
-            const words = customTweetText.split(' ');
-            const primaryWord = words[0].replace(/[^a-zA-Z]/g, '').toUpperCase().slice(0, 5) || 'TREND';
-            const ticker = `$${primaryWord}`;
-            const name = `${primaryWord} Autonomous Coin`;
-            const lore = `Minted by GenLayer consensus from ${customAuthor}'s viral post on breaking tech paradigms.`;
-
-            const newToken = {
-              id: tokens.length,
-              ticker,
-              name,
-              icon: '🚀',
-              lore,
-              origin_author: customAuthor,
-              author_name: customAuthor.replace('@', ''),
-              avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=80',
-              origin_tweet_text: customTweetText,
-              origin_tweet_url: customTweetUrl,
-              tweet_time: 'Just now',
-              likes: '1.2K',
-              retweets: '340',
-              views: '85K',
-              virality_score: 91,
-              total_supply: 1000000000,
-              circulating_supply: 0,
-              reserve_balance: 0,
-              is_graduated: false,
-              surge_burns_count: 0,
-              is_king: false,
-            };
-
-            setTokens(prev => [newToken, ...prev]);
-            setIsLaunching(false);
-            setLaunchModalOpen(false);
-            setLaunchStep(0);
-            showToast(`🚀 ${ticker} successfully coined & fair-launch curve deployed on GenLayer!`);
-          }, 800);
-        }, 700);
-      }, 600);
-    }, 500);
   };
 
-  // Trend surge burn with Live GenLayer StudioNet
+  // Trend surge burn with Live GenLayer Studio Next
   const handleTriggerSurge = async () => {
     if (!surgeTweetText.trim() || !surgeModalToken) return;
     setIsSurging(true);
-    showToast('🔥 Submitting Trend Surge consensus verification to GenLayer StudioNet...');
+    showToast('🔥 Submitting Trend Surge consensus verification to GenLayer Studio Next...');
 
     try {
-      const res = await fetch('/api/surge', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          token_id: surgeModalToken.id,
-          follow_up_url: 'https://x.com/elonmusk/status/1880000000000000010',
-          follow_up_text: surgeTweetText,
-        }),
-      });
-      const data = await res.json();
-      if (res.ok && data.success) {
-        setLastTxHash(data.transaction_hash);
-        showToast(`🔥 TREND SURGE CONFIRMED ON-CHAIN! Tx: ${data.transaction_hash.slice(0, 10)}...`);
-        await fetchNetworkData();
-        const t = surgeModalToken;
-        const remaining = t.total_supply - t.circulating_supply;
-        const burnAmount = Math.floor(remaining / 10);
-        setSurgeSuccess({
-          burnAmount,
-          newTotal: t.total_supply - burnAmount,
-          ticker: t.ticker,
-          txHash: data.transaction_hash,
-        });
-        setIsSurging(false);
-        return;
-      }
-    } catch (e) {
-      console.warn('Surge notice, executing fallback burn:', e);
-    }
+      const res = await detectSurgeOnChain(
+        walletKey,
+        surgeModalToken.id,
+        'https://x.com/elonmusk/status/1880000000000000010',
+        surgeTweetText
+      );
 
-    setTimeout(() => {
+      setLastTxHash(res.txHash);
+      showToast(`🔥 TREND SURGE VERIFIED! 10% unminted supply burned by consensus!`, res.txHash);
+
       const t = surgeModalToken;
       const remaining = t.total_supply - t.circulating_supply;
       const burnAmount = Math.floor(remaining / 10);
-      const newTotal = t.total_supply - burnAmount;
+      setSurgeSuccess({
+        burnAmount,
+        newTotal: t.total_supply - burnAmount,
+        ticker: t.ticker,
+        txHash: res.txHash,
+      });
 
       setTokens(prev => prev.map(tok => {
         if (tok.id === t.id) {
           return {
             ...tok,
-            total_supply: newTotal,
-            surge_burns_count: tok.surge_burns_count + 1,
+            total_supply: tok.total_supply - burnAmount,
+            surge_burns_count: (tok.surge_burns_count || 0) + 1,
           };
         }
         return tok;
       }));
 
+      await refreshOnChainData();
+    } catch (e) {
+      console.error('Surge burn error:', e);
+      showToast(`⚠️ Trend surge verification failed: ${e.message || e}`);
+    } finally {
       setIsSurging(false);
-      setSurgeSuccess({
-        burnAmount,
-        newTotal,
-        ticker: t.ticker,
-      });
-      showToast(`🔥 TREND SURGE CONFIRMED! ${burnAmount.toLocaleString()} ${t.ticker} supply burned!`);
-    }, 1100);
+    }
   };
 
   return (
@@ -517,10 +417,20 @@ export default function TrendPump({ onSwitchToEscrow }) {
           fontWeight: '700',
           fontSize: '0.92rem',
           display: 'flex',
-          alignItems: 'center',
-          gap: '10px'
+          flexDirection: 'column',
+          gap: '6px'
         }}>
-          {toastMessage}
+          <div>{toastMessage}</div>
+          {toastTx && (
+            <a
+              href={`${EXPLORER_URL}/tx/${toastTx}`}
+              target="_blank"
+              rel="noreferrer"
+              style={{ color: '#38bdf8', fontSize: '0.82rem', textDecoration: 'underline' }}
+            >
+              View on Studio Next Explorer: {toastTx.slice(0, 10)}... ↗
+            </a>
+          )}
         </div>
       )}
 
@@ -576,42 +486,56 @@ export default function TrendPump({ onSwitchToEscrow }) {
               <div className="tp-logo-title">
                 <span>Gen<span style={{ color: '#10b981' }}>Fun</span></span>
                 <span className="tp-badge-genlayer">
-                  <span>⚡</span> GenLayer Intelligent Contract
+                  <span>⚡</span> GenLayer Studio Next (61997)
                 </span>
               </div>
             </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-            <a 
-              href={EXPLORER_URL}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+            <a
+              href={`${EXPLORER_URL}/address/${CONTRACT_ADDRESS}`}
               target="_blank"
               rel="noreferrer"
               className="tp-network-pill"
               style={{ textDecoration: 'none', color: 'inherit' }}
+              title="View deployed Intelligent Contract on GenLayer Explorer"
             >
-              <span className="tp-live-dot" style={{ backgroundColor: networkStatus ? '#10b981' : '#f59e0b' }}></span>
-              <span>{networkStatus ? 'StudioNet: 0xc0Bbd...dF693 ↗' : 'StudioNet: Connecting...'}</span>
+              <span className="tp-live-dot" style={{ backgroundColor: networkConnected ? '#10b981' : '#f59e0b' }}></span>
+              <span>Contract: {CONTRACT_ADDRESS.slice(0, 6)}...{CONTRACT_ADDRESS.slice(-4)} ↗</span>
             </a>
 
             {lastTxHash && (
               <a
-                href={`https://explorer-studio.genlayer.com/tx/${lastTxHash}`}
+                href={`${EXPLORER_URL}/tx/${lastTxHash}`}
                 target="_blank"
                 rel="noreferrer"
                 className="tp-network-pill"
                 style={{ textDecoration: 'none', color: '#60a5fa', borderColor: 'rgba(96, 165, 250, 0.4)' }}
-                title="View latest confirmed transaction on GenLayer StudioNet Explorer"
+                title="View latest confirmed transaction on GenLayer Studio Next Explorer"
               >
                 🔗 Latest Tx: {lastTxHash.slice(0, 8)}... ↗
               </a>
             )}
 
-            <div className="tp-network-pill" style={{ color: '#34d399', fontWeight: '800' }}>
-              💰 {userGenBalance.toLocaleString()} GEN wei
-            </div>
+            <button
+              className="tp-network-pill"
+              onClick={() => setWalletModalOpen(true)}
+              style={{
+                cursor: 'pointer',
+                background: 'rgba(16, 185, 129, 0.1)',
+                borderColor: 'rgba(16, 185, 129, 0.4)',
+                color: '#34d399',
+                fontWeight: '800'
+              }}
+              title="Click to switch wallet"
+            >
+              <span>{walletType === 'metamask' ? '🦊 MetaMask' : '⚡ Studio Dev'}</span>
+              <span>{walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}</span>
+              <span style={{ color: '#ffffff' }}>({userGenBalance} GEN)</span>
+            </button>
 
-            <button className="tp-btn-faucet" onClick={handleClaimFaucet} title="Claim 1,000,000 GEN test tokens">
+            <button className="tp-btn-faucet" onClick={handleClaimFaucet} title="Claim 50 GEN test tokens">
               <span>🎁</span>
               <span>Faucet</span>
             </button>
@@ -622,7 +546,7 @@ export default function TrendPump({ onSwitchToEscrow }) {
             </button>
 
             {onSwitchToEscrow && (
-              <button 
+              <button
                 onClick={onSwitchToEscrow}
                 style={{
                   background: 'rgba(255, 255, 255, 0.05)',
@@ -654,8 +578,8 @@ export default function TrendPump({ onSwitchToEscrow }) {
               Zero Human Devs. <span>Pure AI Consensus.</span>
             </h1>
             <p className="tp-hero-desc">
-              The Intelligent Contract monitors high-impact tweets in real time, computes virality 
-              via GenLayer validator LLMs, mints fair-launch memecoins, and executes automated 
+              The Intelligent Contract monitors high-impact tweets in real time, computes virality
+              via GenLayer validator LLMs, mints fair-launch memecoins, and executes automated
               <strong> 10% Trend Surge Burns</strong> when creators follow up.
             </p>
           </div>
@@ -692,7 +616,7 @@ export default function TrendPump({ onSwitchToEscrow }) {
         <div className="tp-filter-bar">
           <div className="tp-search-box">
             <span className="tp-search-icon">🔍</span>
-            <input 
+            <input
               type="text"
               className="tp-search-input"
               placeholder="Search ticker ($MARS), name, or author (@elonmusk)..."
@@ -702,25 +626,25 @@ export default function TrendPump({ onSwitchToEscrow }) {
           </div>
 
           <div className="tp-category-pills">
-            <button 
+            <button
               className={`tp-cat-btn ${activeCategory === 'all' ? 'tp-cat-active' : ''}`}
               onClick={() => setActiveCategory('all')}
             >
               <span>⚡</span> All Curves
             </button>
-            <button 
+            <button
               className={`tp-cat-btn ${activeCategory === 'king' ? 'tp-cat-active' : ''}`}
               onClick={() => setActiveCategory('king')}
             >
               <span>👑</span> King of the Hill
             </button>
-            <button 
+            <button
               className={`tp-cat-btn ${activeCategory === 'hot' ? 'tp-cat-active' : ''}`}
               onClick={() => setActiveCategory('hot')}
             >
               <span>🔥</span> Hot Virality
             </button>
-            <button 
+            <button
               className={`tp-cat-btn ${activeCategory === 'graduating' ? 'tp-cat-active' : ''}`}
               onClick={() => setActiveCategory('graduating')}
             >
@@ -771,7 +695,7 @@ export default function TrendPump({ onSwitchToEscrow }) {
                   <div className="tp-virality-meter">
                     <span>⚡</span> 94/100 Viral
                   </div>
-                  <button 
+                  <button
                     className="tp-btn-radar-launch"
                     onClick={() => {
                       setCustomAuthor(item.author);
@@ -806,8 +730,8 @@ export default function TrendPump({ onSwitchToEscrow }) {
               const currentUnitPrice = 10 + Math.floor((1 * token.circulating_supply) / 100000);
 
               return (
-                <div 
-                  key={token.id} 
+                <div
+                  key={token.id}
                   className={`tp-token-card ${token.is_king ? 'tp-card-king' : ''}`}
                 >
                   {token.is_king && (
@@ -832,12 +756,12 @@ export default function TrendPump({ onSwitchToEscrow }) {
                             ⚡ Virality {token.virality_score}/100
                           </span>
                           {token.surge_burns_count > 0 && (
-                            <span style={{ 
-                              fontSize: '0.74rem', 
-                              color: 'var(--tp-accent-orange-bright)', 
-                              background: 'rgba(249, 115, 22, 0.15)', 
-                              padding: '2px 8px', 
-                              borderRadius: '9999px', 
+                            <span style={{
+                              fontSize: '0.74rem',
+                              color: 'var(--tp-accent-orange-bright)',
+                              background: 'rgba(249, 115, 22, 0.15)',
+                              padding: '2px 8px',
+                              borderRadius: '9999px',
                               border: '1px solid rgba(249, 115, 22, 0.3)',
                               fontWeight: '700'
                             }}>
@@ -852,10 +776,10 @@ export default function TrendPump({ onSwitchToEscrow }) {
                     {/* Embedded Origin Tweet Snapshot */}
                     <div className="tp-card-tweet" style={{ marginTop: '16px' }}>
                       <div className="tp-card-tweet-header">
-                        <span>Source Tweet by <strong>{token.origin_author}</strong> · {token.tweet_time || 'Recent'}</span>
-                        <a 
-                          href={token.origin_tweet_url} 
-                          target="_blank" 
+                        <span>Source Tweet by <strong>{token.origin_author}</strong> · {token.tweet_time || 'On-Chain'}</span>
+                        <a
+                          href={token.origin_tweet_url}
+                          target="_blank"
                           rel="noreferrer"
                           style={{ color: 'var(--tp-accent-cyan-bright)', textDecoration: 'none', fontWeight: '600' }}
                         >
@@ -889,26 +813,26 @@ export default function TrendPump({ onSwitchToEscrow }) {
 
                     {/* User Holdings Pill */}
                     {userHoldings > 0 && (
-                      <div style={{ 
-                        marginTop: '12px', 
-                        fontSize: '0.82rem', 
-                        color: 'var(--tp-accent-green-bright)', 
-                        background: 'rgba(16, 185, 129, 0.1)', 
+                      <div style={{
+                        marginTop: '12px',
+                        fontSize: '0.82rem',
+                        color: 'var(--tp-accent-green-bright)',
+                        background: 'rgba(16, 185, 129, 0.1)',
                         border: '1px solid rgba(16, 185, 129, 0.25)',
-                        padding: '8px 14px', 
+                        padding: '8px 14px',
                         borderRadius: '10px',
                         display: 'flex',
                         justifyContent: 'space-between',
                         fontFamily: 'var(--tp-font-mono)',
                       }}>
-                        <span>Your Balance:</span>
+                        <span>Your Holdings:</span>
                         <strong>{userHoldings.toLocaleString()} {token.ticker}</strong>
                       </div>
                     )}
 
                     {/* Actions */}
                     <div className="tp-card-actions" style={{ marginTop: '14px' }}>
-                      <button 
+                      <button
                         className="tp-btn-trade"
                         onClick={() => {
                           setTradeModalToken(token);
@@ -920,13 +844,13 @@ export default function TrendPump({ onSwitchToEscrow }) {
                         <span>Trade {token.ticker}</span>
                       </button>
 
-                      <button 
+                      <button
                         className="tp-btn-burn-check"
                         onClick={() => {
                           setSurgeModalToken(token);
                           setSurgeSuccess(null);
                         }}
-                        title="Simulate follow-up tweet to trigger 10% supply burn"
+                        title="Simulate follow-up tweet to trigger 10% on-chain supply burn"
                       >
                         <span>🔥</span>
                         <span>Surge Burn</span>
@@ -953,20 +877,20 @@ export default function TrendPump({ onSwitchToEscrow }) {
                   Trade {tradeModalToken.name}
                 </h3>
                 <span style={{ fontSize: '0.82rem', color: 'var(--tp-text-muted)', fontFamily: 'var(--tp-font-mono)' }}>
-                  Intelligent Contract: {TRENDPUMP_CONTRACT.slice(0, 10)}...{TRENDPUMP_CONTRACT.slice(-6)}
+                  Intelligent Contract: {CONTRACT_ADDRESS.slice(0, 10)}...{CONTRACT_ADDRESS.slice(-6)}
                 </span>
               </div>
             </div>
 
             {/* Segmented Buy / Sell Control */}
             <div className="tp-tab-row">
-              <button 
+              <button
                 className={`tp-tab-btn ${tradeTab === 'buy' ? 'tp-tab-active-buy' : ''}`}
                 onClick={() => setTradeTab('buy')}
               >
                 Buy {tradeModalToken.ticker}
               </button>
-              <button 
+              <button
                 className={`tp-tab-btn ${tradeTab === 'sell' ? 'tp-tab-active-sell' : ''}`}
                 onClick={() => setTradeTab('sell')}
               >
@@ -985,7 +909,7 @@ export default function TrendPump({ onSwitchToEscrow }) {
                 )}
               </div>
               <div className="tp-input-box">
-                <input 
+                <input
                   type="number"
                   className="tp-input-field"
                   value={tradeAmount}
@@ -1035,16 +959,16 @@ export default function TrendPump({ onSwitchToEscrow }) {
             </div>
 
             {/* Execute Button */}
-            <button 
+            <button
               className={`tp-btn-submit-swap ${tradeTab === 'buy' ? 'tp-btn-submit-buy' : 'tp-btn-submit-sell'}`}
               onClick={handleExecuteTrade}
               disabled={isTrading}
               style={{ opacity: isTrading ? 0.7 : 1, cursor: isTrading ? 'wait' : 'pointer' }}
             >
               {isTrading ? (
-                <span>⏳ Submitting to StudioNet Validators...</span>
+                <span>⏳ Submitting On-Chain to Studio Next Validators...</span>
               ) : tradeTab === 'buy' ? (
-                `⚡ Instant Buy ${tradeModalToken.ticker}` 
+                `⚡ Instant Buy ${tradeModalToken.ticker}`
               ) : (
                 `💰 Instant Sell ${tradeModalToken.ticker}`
               )}
@@ -1097,7 +1021,7 @@ export default function TrendPump({ onSwitchToEscrow }) {
                 <div className="tp-input-group">
                   <label className="tp-input-label">Author Handle / Source:</label>
                   <div className="tp-input-box">
-                    <input 
+                    <input
                       type="text"
                       className="tp-input-field"
                       value={customAuthor}
@@ -1110,7 +1034,7 @@ export default function TrendPump({ onSwitchToEscrow }) {
                 <div className="tp-input-group">
                   <label className="tp-input-label">Tweet URL / Verification Proof:</label>
                   <div className="tp-input-box">
-                    <input 
+                    <input
                       type="text"
                       className="tp-input-field"
                       value={customTweetUrl}
@@ -1123,7 +1047,7 @@ export default function TrendPump({ onSwitchToEscrow }) {
                 <div className="tp-input-group">
                   <label className="tp-input-label">Tweet Content to Scan:</label>
                   <div className="tp-input-box" style={{ minHeight: '90px' }}>
-                    <textarea 
+                    <textarea
                       className="tp-input-field"
                       style={{ resize: 'vertical', fontSize: '0.95rem', lineHeight: '1.4' }}
                       rows={3}
@@ -1133,7 +1057,7 @@ export default function TrendPump({ onSwitchToEscrow }) {
                   </div>
                 </div>
 
-                <button 
+                <button
                   className="tp-btn-submit-swap tp-btn-submit-buy"
                   style={{ marginTop: '12px' }}
                   onClick={handleAutonomousLaunch}
@@ -1156,7 +1080,7 @@ export default function TrendPump({ onSwitchToEscrow }) {
               🔥 Trigger Trend Surge Check ({surgeModalToken.ticker})
             </h3>
             <p style={{ color: 'var(--tp-text-secondary)', fontSize: '0.88rem', margin: '0 0 18px 0', lineHeight: 1.5 }}>
-              If the original author (<strong>{surgeModalToken.origin_author}</strong>) follows up on this trend, 
+              If the original author (<strong>{surgeModalToken.origin_author}</strong>) follows up on this trend,
               GenLayer validator consensus will automatically execute an on-chain <strong>10% supply burn</strong> of unminted tokens!
             </p>
 
@@ -1167,11 +1091,23 @@ export default function TrendPump({ onSwitchToEscrow }) {
                   Trend Surge Verified by Consensus!
                 </h4>
                 <p style={{ color: '#cbd5e1', fontSize: '1rem', margin: '0 0 24px 0', lineHeight: 1.5 }}>
-                  <strong>{surgeSuccess.burnAmount.toLocaleString()} {surgeSuccess.ticker}</strong> supply permanently burned!
+                  <strong>{surgeSuccess.burnAmount.toLocaleString()} {surgeSuccess.ticker}</strong> supply permanently burned on-chain!
                   <br />
                   New Total Supply: <strong>{surgeSuccess.newTotal.toLocaleString()}</strong>
                 </p>
-                <button 
+                {surgeSuccess.txHash && (
+                  <div style={{ marginBottom: '20px' }}>
+                    <a
+                      href={`${EXPLORER_URL}/tx/${surgeSuccess.txHash}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      style={{ color: '#38bdf8', textDecoration: 'underline', fontSize: '0.9rem' }}
+                    >
+                      View Burn Tx on Explorer: {surgeSuccess.txHash.slice(0, 10)}... ↗
+                    </a>
+                  </div>
+                )}
+                <button
                   className="tp-btn-submit-swap tp-btn-submit-buy"
                   onClick={() => setSurgeModalToken(null)}
                 >
@@ -1183,7 +1119,7 @@ export default function TrendPump({ onSwitchToEscrow }) {
                 <div className="tp-spinner-glow" style={{ borderTopColor: 'var(--tp-accent-orange-bright)', borderRightColor: '#f59e0b' }}></div>
                 <h4 style={{ color: '#ffffff', fontSize: '1.2rem', fontWeight: '800' }}>Validators Arbitrating Trend Surge...</h4>
                 <p style={{ color: 'var(--tp-text-secondary)', fontSize: '0.88rem' }}>
-                  Verifying follow-up tweet alignment with original lore
+                  Verifying follow-up tweet alignment with original lore on GenLayer Studio Next
                 </p>
               </div>
             ) : (
@@ -1191,7 +1127,7 @@ export default function TrendPump({ onSwitchToEscrow }) {
                 <div className="tp-input-group">
                   <label className="tp-input-label">Follow-up Tweet by {surgeModalToken.origin_author}:</label>
                   <div className="tp-input-box" style={{ minHeight: '90px' }}>
-                    <textarea 
+                    <textarea
                       className="tp-input-field"
                       style={{ resize: 'vertical', fontSize: '0.95rem', lineHeight: '1.4' }}
                       rows={3}
@@ -1201,7 +1137,7 @@ export default function TrendPump({ onSwitchToEscrow }) {
                   </div>
                 </div>
 
-                <button 
+                <button
                   className="tp-btn-submit-swap"
                   style={{ background: 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)', color: '#ffffff', boxShadow: '0 6px 24px rgba(249, 115, 22, 0.4)' }}
                   onClick={handleTriggerSurge}
@@ -1210,6 +1146,72 @@ export default function TrendPump({ onSwitchToEscrow }) {
                 </button>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ─── Wallet Select Modal ───────────────────────────────────── */}
+      {walletModalOpen && (
+        <div className="tp-modal-overlay" onClick={() => setWalletModalOpen(false)}>
+          <div className="tp-modal-box" onClick={e => e.stopPropagation()} style={{ maxWidth: '440px' }}>
+            <button className="tp-modal-close" onClick={() => setWalletModalOpen(false)}>✕</button>
+            <h3 style={{ margin: '0 0 16px 0', fontSize: '1.35rem', color: '#ffffff', fontWeight: '800' }}>
+              Connect Wallet
+            </h3>
+            <p style={{ color: 'var(--tp-text-secondary)', fontSize: '0.88rem', margin: '0 0 20px 0' }}>
+              Choose your wallet for live interaction with GenLayer Studio Next (Chain 61997).
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <button
+                onClick={handleConnectDev}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  background: walletType === 'dev' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(255, 255, 255, 0.05)',
+                  border: walletType === 'dev' ? '1px solid #10b981' : '1px solid rgba(255, 255, 255, 0.1)',
+                  padding: '14px 18px',
+                  borderRadius: '12px',
+                  color: '#ffffff',
+                  cursor: 'pointer',
+                  fontWeight: '700',
+                  textAlign: 'left'
+                }}
+              >
+                <div>
+                  <div style={{ fontSize: '1rem', color: '#34d399' }}>⚡ Studio Next Dev Agent</div>
+                  <div style={{ fontSize: '0.78rem', color: 'var(--tp-text-muted)', fontFamily: 'var(--tp-font-mono)', marginTop: '4px' }}>
+                    0x70BE...EcCF · Funded (~99 GEN)
+                  </div>
+                </div>
+                {walletType === 'dev' && <span style={{ color: '#10b981' }}>✓ Active</span>}
+              </button>
+
+              <button
+                onClick={handleConnectMetaMask}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  background: walletType === 'metamask' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(255, 255, 255, 0.05)',
+                  border: walletType === 'metamask' ? '1px solid #10b981' : '1px solid rgba(255, 255, 255, 0.1)',
+                  padding: '14px 18px',
+                  borderRadius: '12px',
+                  color: '#ffffff',
+                  cursor: 'pointer',
+                  fontWeight: '700',
+                  textAlign: 'left'
+                }}
+              >
+                <div>
+                  <div style={{ fontSize: '1rem', color: '#f59e0b' }}>🦊 Browser Wallet (MetaMask)</div>
+                  <div style={{ fontSize: '0.78rem', color: 'var(--tp-text-muted)', fontFamily: 'var(--tp-font-mono)', marginTop: '4px' }}>
+                    Direct Web3 injection · Chain 61997
+                  </div>
+                </div>
+                {walletType === 'metamask' && <span style={{ color: '#10b981' }}>✓ Active</span>}
+              </button>
+            </div>
           </div>
         </div>
       )}
