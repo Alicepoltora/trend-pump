@@ -1,5 +1,6 @@
 import { createClient, createAccount } from 'genlayer-js';
 import { studioDevnet } from 'genlayer-js/chains';
+import { keccak_256 } from '@noble/hashes/sha3';
 
 export const CONTRACT_ADDRESS = '0xDe0d8B959bFf279E26cFFa392aFAAc724d22AE45';
 export const DEPLOY_TX_HASH = '0x4c00b9e3c91f800ea6559572fa59406e118307f222e7e78aaf898e929cf5ea7d';
@@ -8,9 +9,28 @@ export const RPC_URL = 'https://studio-dev.genlayer.com/api';
 export const CHAIN_ID = 61997;
 export const CHAIN_HEX = '0xf22d';
 
-// Pre-funded deployer / dev account on Studio Next
+// Pre-funded deployer / dev account on Studio Next (~90+ GEN)
 export const DEFAULT_DEV_KEY = '0x1344e32ee1073b2434ed058bebb0871d3109d362630e35fc0d463c68464b6138';
 export const DEFAULT_DEV_ADDR = '0x70BEEf62DB5F4a766E07387666f95e384C57EcCF';
+
+// Standard ERC-55 Checksum Address utility
+export function toChecksumAddress(address) {
+  if (!address || typeof address !== 'string') return DEFAULT_DEV_ADDR;
+  const addr = address.toLowerCase().replace(/^0x/, '');
+  if (addr.length !== 40) return address;
+  const hash = keccak_256(new TextEncoder().encode(addr));
+  let ret = '0x';
+  for (let i = 0; i < addr.length; i++) {
+    const byte = hash[i >> 1];
+    const nibble = (i % 2 === 0) ? (byte >> 4) : (byte & 0x0f);
+    if (nibble >= 8) {
+      ret += addr[i].toUpperCase();
+    } else {
+      ret += addr[i];
+    }
+  }
+  return ret;
+}
 
 export function getReadClient() {
   return createClient({ chain: studioDevnet });
@@ -24,57 +44,39 @@ export function getWriteClient(privateKey) {
   };
 }
 
-// Faucet funding via sim_fundAccount
-export async function fundAccount(address, amountGen = '50') {
+// Real on-chain faucet: transfers 5 real GEN from funded relayer to recipient address on chain 61997
+export async function fundAccount(recipientAddress, amountGen = '5') {
   try {
-    const wei = BigInt(Math.floor(parseFloat(amountGen) * 1e18)).toString();
-    const res = await fetch(RPC_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'User-Agent': 'Mozilla/5.0'
-      },
-      body: JSON.stringify({
-        jsonrpc: '2.0',
-        method: 'sim_fundAccount',
-        params: [address, wei],
-        id: Date.now()
-      })
+    const checksummed = toChecksumAddress(recipientAddress);
+    const { client } = getWriteClient(DEFAULT_DEV_KEY);
+    const valueWei = BigInt(Math.floor(parseFloat(amountGen) * 1e18));
+
+    const txHash = await client.sendTransaction({
+      to: checksummed,
+      value: valueWei,
     });
-    const data = await res.json();
-    return data.result;
+
+    await client.waitForTransactionReceipt({ hash: txHash });
+    return txHash;
   } catch (err) {
-    console.error('Faucet fund failed:', err);
-    return null;
+    console.error('Real GEN funding failed:', err);
+    throw err;
   }
 }
 
-// Fetch real GEN balance from RPC
+// Fetch real GEN balance from RPC using client
 export async function getAccountBalance(address) {
   try {
-    const res = await fetch(RPC_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'User-Agent': 'Mozilla/5.0'
-      },
-      body: JSON.stringify({
-        jsonrpc: '2.0',
-        method: 'eth_getBalance',
-        params: [address, 'latest'],
-        id: Date.now()
-      })
-    });
-    const data = await res.json();
-    if (data && data.result) {
-      const wei = BigInt(data.result);
-      const gen = Number(wei) / 1e18;
-      return gen.toFixed(2);
-    }
+    if (!address) return '0.00';
+    const checksummed = toChecksumAddress(address);
+    const client = getReadClient();
+    const wei = await client.getBalance({ address: checksummed });
+    const gen = Number(wei) / 1e18;
+    return gen.toFixed(2);
   } catch (err) {
     console.warn('Failed to fetch balance:', err);
+    return '0.00';
   }
-  return '0.00';
 }
 
 // Fallback seed data in case contract was just deployed
@@ -83,8 +85,10 @@ export const CANONICAL_FALLBACK_TOKENS = [
     id: 0,
     ticker: '$MARS',
     name: 'Mars Multiplanetary Coin',
+    icon: '🪐',
     lore: "Elon Musk Starship tweet fuels humanity colonization of Mars. The cosmos calls.",
     origin_author: '@elonmusk',
+    author_name: 'Elon Musk',
     origin_tweet_text: 'Starship will make life multiplanetary on Mars. Humanity belongs among the stars.',
     origin_tweet_url: 'https://x.com/elonmusk/status/1880000000000000000',
     virality_score: 92,
@@ -93,14 +97,17 @@ export const CANONICAL_FALLBACK_TOKENS = [
     reserve_balance: 1420000,
     is_graduated: false,
     surge_burns_count: 1,
+    is_king: true,
     creator: DEFAULT_DEV_ADDR,
   },
   {
     id: 1,
     ticker: '$GROK',
     name: 'Grok Quantum Reasoning',
+    icon: '🤖',
     lore: "Spawned from xAI real-time reasoning cluster announcement. Unfiltered AI intellect.",
     origin_author: '@elonmusk',
+    author_name: 'Elon Musk',
     origin_tweet_text: 'Grok 3 is trained and entering continuous reasoning mode. Next level frontier intelligence.',
     origin_tweet_url: 'https://x.com/elonmusk/status/1880000000000000001',
     virality_score: 88,
@@ -109,14 +116,17 @@ export const CANONICAL_FALLBACK_TOKENS = [
     reserve_balance: 680000,
     is_graduated: false,
     surge_burns_count: 0,
+    is_king: false,
     creator: DEFAULT_DEV_ADDR,
   },
   {
     id: 2,
     ticker: '$LEAN',
     name: 'Lean EVM Protocol',
+    icon: '⚡',
     lore: "Inspired by Vitalik Buterin manifesto on cryptographic minimalism and light-client validation.",
     origin_author: '@vitalikbuterin',
+    author_name: 'Vitalik Buterin',
     origin_tweet_text: 'Simplifying core protocol layers: the future of decentralized verification is lean and deterministic.',
     origin_tweet_url: 'https://x.com/vitalikbuterin/status/1880000000000000002',
     virality_score: 85,
@@ -125,6 +135,7 @@ export const CANONICAL_FALLBACK_TOKENS = [
     reserve_balance: 420000,
     is_graduated: false,
     surge_burns_count: 0,
+    is_king: false,
     creator: DEFAULT_DEV_ADDR,
   }
 ];
@@ -253,7 +264,6 @@ export async function getBuyPrice(tokenId, amount) {
     });
     return Number(price);
   } catch (e) {
-    // Mathematical bonding curve local fallback
     const BASE_PRICE = 10;
     const SLOPE = 1;
     const SCALE = 100000;
@@ -266,11 +276,12 @@ export async function getBuyPrice(tokenId, amount) {
 // Read user balance
 export async function getUserTokenBalance(tokenId, userAddress) {
   try {
+    const checksummed = toChecksumAddress(userAddress);
     const client = getReadClient();
     const bal = await client.readContract({
       address: CONTRACT_ADDRESS,
       functionName: 'get_balance',
-      args: [BigInt(tokenId), userAddress],
+      args: [BigInt(tokenId), checksummed],
     });
     return Number(bal);
   } catch (e) {

@@ -9,6 +9,7 @@ import {
   CHAIN_HEX,
   DEFAULT_DEV_KEY,
   DEFAULT_DEV_ADDR,
+  toChecksumAddress,
   fetchAllTokens,
   buyTokensOnChain,
   sellTokensOnChain,
@@ -98,7 +99,7 @@ export default function TrendPump({ onSwitchToEscrow }) {
     setTimeout(() => {
       setToastMessage('');
       setToastTx(null);
-    }, 6000);
+    }, 6500);
   }, []);
 
   // Fetch tokens and balance from blockchain
@@ -144,7 +145,7 @@ export default function TrendPump({ onSwitchToEscrow }) {
 
   useEffect(() => {
     refreshOnChainData();
-    const interval = setInterval(refreshOnChainData, 12000);
+    const interval = setInterval(refreshOnChainData, 10000);
     return () => clearInterval(interval);
   }, [refreshOnChainData]);
 
@@ -158,7 +159,7 @@ export default function TrendPump({ onSwitchToEscrow }) {
       showToast('🦊 Requesting MetaMask connection...');
       const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
       if (accounts && accounts[0]) {
-        const addr = accounts[0];
+        const addr = toChecksumAddress(accounts[0]);
         setWalletAddress(addr);
         setWalletType('metamask');
         setWalletKey(null);
@@ -187,7 +188,7 @@ export default function TrendPump({ onSwitchToEscrow }) {
         }
         const bal = await getAccountBalance(addr);
         setUserGenBalance(bal);
-        showToast(`✓ Connected MetaMask: ${addr.slice(0, 6)}...${addr.slice(-4)}`);
+        showToast(`✓ Connected MetaMask: ${addr.slice(0, 6)}...${addr.slice(-4)} (${bal} GEN)`);
         setWalletModalOpen(false);
       }
     } catch (err) {
@@ -196,12 +197,13 @@ export default function TrendPump({ onSwitchToEscrow }) {
     }
   };
 
-  const handleConnectDev = () => {
+  const handleConnectDev = async () => {
     setWalletAddress(DEFAULT_DEV_ADDR);
     setWalletKey(DEFAULT_DEV_KEY);
     setWalletType('dev');
-    getAccountBalance(DEFAULT_DEV_ADDR).then(setUserGenBalance);
-    showToast(`✓ Connected 1-Click Studio Next Dev Account`);
+    const bal = await getAccountBalance(DEFAULT_DEV_ADDR);
+    setUserGenBalance(bal);
+    showToast(`✓ Connected 1-Click Studio Next Dev Account (${bal} GEN)`);
     setWalletModalOpen(false);
   };
 
@@ -298,14 +300,16 @@ export default function TrendPump({ onSwitchToEscrow }) {
 
   // Claim faucet on Studio Next
   const handleClaimFaucet = async () => {
-    showToast('⏳ Requesting 50 GEN from Studio Next RPC faucet...');
+    showToast(`⏳ Sending 5 GEN on Studio Next to ${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}...`);
     try {
-      await fundAccount(walletAddress, '50');
+      const txHash = await fundAccount(walletAddress, '5');
+      await new Promise(r => setTimeout(r, 1500));
       const bal = await getAccountBalance(walletAddress);
       setUserGenBalance(bal);
-      showToast(`🎁 Successfully received 50 GEN on Studio Next! Balance: ${bal} GEN`);
+      showToast(`🎁 Successfully transferred 5 GEN on Studio Next! Balance: ${bal} GEN`, txHash);
     } catch (e) {
-      showToast(`⚠️ Faucet notice: ${e.message}`);
+      console.error('Faucet transfer error:', e);
+      showToast(`⚠️ Faucet error: ${e.message || e}`);
     }
   };
 
@@ -535,9 +539,9 @@ export default function TrendPump({ onSwitchToEscrow }) {
               <span style={{ color: '#ffffff' }}>({userGenBalance} GEN)</span>
             </button>
 
-            <button className="tp-btn-faucet" onClick={handleClaimFaucet} title="Claim 50 GEN test tokens">
+            <button className="tp-btn-faucet" onClick={handleClaimFaucet} title="Get 5 GEN from Studio Next Faucet">
               <span>🎁</span>
-              <span>Faucet</span>
+              <span>Faucet (+5 GEN)</span>
             </button>
 
             <button className="tp-btn-launch" onClick={() => setLaunchModalOpen(true)}>
@@ -1181,7 +1185,7 @@ export default function TrendPump({ onSwitchToEscrow }) {
                 <div>
                   <div style={{ fontSize: '1rem', color: '#34d399' }}>⚡ Studio Next Dev Agent</div>
                   <div style={{ fontSize: '0.78rem', color: 'var(--tp-text-muted)', fontFamily: 'var(--tp-font-mono)', marginTop: '4px' }}>
-                    0x70BE...EcCF · Funded (~99 GEN)
+                    0x70BE...EcCF · Pre-funded (~90+ GEN)
                   </div>
                 </div>
                 {walletType === 'dev' && <span style={{ color: '#10b981' }}>✓ Active</span>}
