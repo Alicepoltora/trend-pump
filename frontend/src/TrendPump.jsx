@@ -149,6 +149,28 @@ export default function TrendPump({ onSwitchToEscrow }) {
     return () => clearInterval(interval);
   }, [refreshOnChainData]);
 
+  // Listen to MetaMask account and chain changes
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.ethereum && window.ethereum.on) {
+      const handleAccounts = async (accs) => {
+        if (accs && accs.length > 0) {
+          const addr = toChecksumAddress(accs[0]);
+          setWalletAddress(addr);
+          setWalletType('metamask');
+          setWalletKey(null);
+          const bal = await getAccountBalance(addr);
+          setUserGenBalance(bal);
+        }
+      };
+      window.ethereum.on('accountsChanged', handleAccounts);
+      return () => {
+        if (window.ethereum.removeListener) {
+          window.ethereum.removeListener('accountsChanged', handleAccounts);
+        }
+      };
+    }
+  }, []);
+
   // Connect MetaMask
   const handleConnectMetaMask = async () => {
     if (!window.ethereum) {
@@ -271,9 +293,9 @@ export default function TrendPump({ onSwitchToEscrow }) {
     try {
       let res;
       if (tradeTab === 'buy') {
-        res = await buyTokensOnChain(walletKey, tokenId, amount);
+        res = await buyTokensOnChain(walletKey, walletAddress, tokenId, amount);
       } else {
-        res = await sellTokensOnChain(walletKey, tokenId, amount);
+        res = await sellTokensOnChain(walletKey, walletAddress, tokenId, amount);
       }
 
       const txHash = res.txHash;
@@ -300,13 +322,23 @@ export default function TrendPump({ onSwitchToEscrow }) {
 
   // Claim faucet on Studio Next
   const handleClaimFaucet = async () => {
-    showToast(`⏳ Sending 5 GEN on Studio Next to ${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}...`);
+    if (!walletAddress) {
+      setWalletModalOpen(true);
+      showToast('⚠️ Please connect your wallet first');
+      return;
+    }
+    const initialBal = userGenBalance;
+    showToast(`⏳ Sending 10 GEN on Studio Next to ${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}...`);
     try {
-      const txHash = await fundAccount(walletAddress, '5');
-      await new Promise(r => setTimeout(r, 1500));
-      const bal = await getAccountBalance(walletAddress);
-      setUserGenBalance(bal);
-      showToast(`🎁 Successfully transferred 5 GEN on Studio Next! Balance: ${bal} GEN`, txHash);
+      const txHash = await fundAccount(walletAddress, '10');
+      let newBal = initialBal;
+      for (let i = 0; i < 7; i++) {
+        await new Promise(r => setTimeout(r, 1200));
+        newBal = await getAccountBalance(walletAddress);
+        if (parseFloat(newBal) > parseFloat(initialBal)) break;
+      }
+      setUserGenBalance(newBal);
+      showToast(`🎁 Successfully transferred 10 GEN on Studio Next! Balance: ${newBal} GEN`, txHash);
     } catch (e) {
       console.error('Faucet transfer error:', e);
       showToast(`⚠️ Faucet error: ${e.message || e}`);
@@ -329,7 +361,7 @@ export default function TrendPump({ onSwitchToEscrow }) {
 
     try {
       showToast('🤖 Submitting tweet to GenLayer GenVM consensus radar...');
-      const res = await scanAndLaunchOnChain(walletKey, {
+      const res = await scanAndLaunchOnChain(walletKey, walletAddress, {
         url: customTweetUrl,
         text: customTweetText,
         author: customAuthor,
@@ -364,6 +396,7 @@ export default function TrendPump({ onSwitchToEscrow }) {
     try {
       const res = await detectSurgeOnChain(
         walletKey,
+        walletAddress,
         surgeModalToken.id,
         'https://x.com/elonmusk/status/1880000000000000010',
         surgeTweetText
@@ -539,9 +572,9 @@ export default function TrendPump({ onSwitchToEscrow }) {
               <span style={{ color: '#ffffff' }}>({userGenBalance} GEN)</span>
             </button>
 
-            <button className="tp-btn-faucet" onClick={handleClaimFaucet} title="Get 5 GEN from Studio Next Faucet">
+            <button className="tp-btn-faucet" onClick={handleClaimFaucet} title="Get 10 GEN from Studio Next Faucet">
               <span>🎁</span>
-              <span>Faucet (+5 GEN)</span>
+              <span>Faucet (+10 GEN)</span>
             </button>
 
             <button className="tp-btn-launch" onClick={() => setLaunchModalOpen(true)}>

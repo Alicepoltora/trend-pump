@@ -36,7 +36,18 @@ export function getReadClient() {
   return createClient({ chain: studioDevnet });
 }
 
-export function getWriteClient(privateKey) {
+export function getWriteClient(privateKey, userAddress) {
+  if (!privateKey && typeof window !== 'undefined' && window.ethereum && userAddress) {
+    const checksummed = toChecksumAddress(userAddress);
+    return {
+      client: createClient({
+        chain: studioDevnet,
+        provider: window.ethereum,
+        account: checksummed,
+      }),
+      account: { address: checksummed },
+    };
+  }
   const account = createAccount(privateKey || DEFAULT_DEV_KEY);
   return {
     client: createClient({ chain: studioDevnet, account }),
@@ -44,11 +55,12 @@ export function getWriteClient(privateKey) {
   };
 }
 
-// Real on-chain faucet: transfers 5 real GEN from funded relayer to recipient address on chain 61997
-export async function fundAccount(recipientAddress, amountGen = '5') {
+// Real on-chain faucet: transfers real GEN from funded relayer to recipient address on chain 61997
+export async function fundAccount(recipientAddress, amountGen = '10') {
   try {
     const checksummed = toChecksumAddress(recipientAddress);
-    const { client } = getWriteClient(DEFAULT_DEV_KEY);
+    const account = createAccount(DEFAULT_DEV_KEY);
+    const client = createClient({ chain: studioDevnet, account });
     const valueWei = BigInt(Math.floor(parseFloat(amountGen) * 1e18));
 
     const txHash = await client.sendTransaction({
@@ -56,7 +68,11 @@ export async function fundAccount(recipientAddress, amountGen = '5') {
       value: valueWei,
     });
 
-    await client.waitForTransactionReceipt({ hash: txHash });
+    try {
+      await client.waitForTransactionReceipt({ hash: txHash, timeout: 15000 });
+    } catch (e) {
+      console.warn('waitForTransactionReceipt timeout/warn (proceeding):', e);
+    }
     return txHash;
   } catch (err) {
     console.error('Real GEN funding failed:', err);
@@ -175,8 +191,8 @@ export async function fetchAllTokens() {
 }
 
 // Seed canonical tokens on-chain
-export async function seedInitialTokensOnChain(privateKey) {
-  const { client } = getWriteClient(privateKey);
+export async function seedInitialTokensOnChain(privateKey, userAddress) {
+  const { client } = getWriteClient(privateKey, userAddress);
   const fees = await client.estimateTransactionFees();
   const txHash = await client.writeContract({
     address: CONTRACT_ADDRESS,
@@ -188,8 +204,8 @@ export async function seedInitialTokensOnChain(privateKey) {
 }
 
 // Autonomous scan & launch on-chain (GenVM AI virality consensus)
-export async function scanAndLaunchOnChain(privateKey, { url, text, author, ticker, name }) {
-  const { client, account } = getWriteClient(privateKey);
+export async function scanAndLaunchOnChain(privateKey, userAddress, { url, text, author, ticker, name }) {
+  const { client, account } = getWriteClient(privateKey, userAddress);
   const fees = await client.estimateTransactionFees();
 
   const txHash = await client.writeContract({
@@ -209,8 +225,8 @@ export async function scanAndLaunchOnChain(privateKey, { url, text, author, tick
 }
 
 // Buy tokens via bonding curve on-chain
-export async function buyTokensOnChain(privateKey, tokenId, amount) {
-  const { client } = getWriteClient(privateKey);
+export async function buyTokensOnChain(privateKey, userAddress, tokenId, amount) {
+  const { client } = getWriteClient(privateKey, userAddress);
   const fees = await client.estimateTransactionFees();
 
   const txHash = await client.writeContract({
@@ -224,8 +240,8 @@ export async function buyTokensOnChain(privateKey, tokenId, amount) {
 }
 
 // Sell tokens via bonding curve on-chain
-export async function sellTokensOnChain(privateKey, tokenId, amount) {
-  const { client } = getWriteClient(privateKey);
+export async function sellTokensOnChain(privateKey, userAddress, tokenId, amount) {
+  const { client } = getWriteClient(privateKey, userAddress);
   const fees = await client.estimateTransactionFees();
 
   const txHash = await client.writeContract({
@@ -239,8 +255,8 @@ export async function sellTokensOnChain(privateKey, tokenId, amount) {
 }
 
 // Detect trend surge and trigger on-chain 10% supply burn
-export async function detectSurgeOnChain(privateKey, tokenId, url, text) {
-  const { client } = getWriteClient(privateKey);
+export async function detectSurgeOnChain(privateKey, userAddress, tokenId, url, text) {
+  const { client } = getWriteClient(privateKey, userAddress);
   const fees = await client.estimateTransactionFees();
 
   const txHash = await client.writeContract({
