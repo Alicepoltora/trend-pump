@@ -887,7 +887,7 @@ export default function TrendPump({ onSwitchToEscrow }) {
                           setSurgeModalToken(token);
                           setSurgeSuccess(null);
                         }}
-                        title="Simulate follow-up tweet to trigger 10% on-chain supply burn"
+                        title="Trigger follow-up tweet to trigger 10% on-chain supply burn"
                       >
                         <span>🔥</span>
                         <span>Surge Burn</span>
