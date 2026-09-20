@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import './TrendPump.css';
 import {
   CONTRACT_ADDRESS,
@@ -57,6 +57,13 @@ const PRESET_TWEETS = [
   },
 ];
 
+const RADAR_ITEMS = [
+  { author: '@elonmusk', text: 'Starship Flight 7 propellant loading sequence initialized at Starbase.', score: 95, action: 'Auto-Coined $STAR7' },
+  { author: '@vitalikbuterin', text: 'Light client SNARK verification is now sub-second on decentralized nodes.', score: 91, action: 'Trending $LEAN' },
+  { author: '@sama', text: 'Compute scaling laws show no signs of diminishing returns across frontier models.', score: 88, action: 'Active Radar' },
+  { author: '@cz_binance', text: 'Decentralized AI agents are the next major financial primitive.', score: 93, action: 'Auto-Coined $AGENT' }
+];
+
 export default function TrendPump({ onSwitchToEscrow }) {
   const [tokens, setTokens] = useState(CANONICAL_FALLBACK_TOKENS);
   const [walletAddress, setWalletAddress] = useState(DEFAULT_DEV_ADDR);
@@ -70,11 +77,42 @@ export default function TrendPump({ onSwitchToEscrow }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('all'); // 'all', 'hot', 'king', 'graduating'
 
-  // Modals state
+  // Trading Modal state
   const [tradeModalToken, setTradeModalToken] = useState(null);
   const [tradeTab, setTradeTab] = useState('buy');
   const [tradeAmount, setTradeAmount] = useState('50000');
+  const [tradeDetailTab, setTradeDetailTab] = useState('swap'); // 'swap' | 'chart' | 'holders' | 'trollbox'
 
+  // AI Persona Chat Modal state
+  const [chatModalToken, setChatModalToken] = useState(null);
+  const [chatInput, setChatInput] = useState('');
+  const [isChatLoading, setIsChatLoading] = useState(false);
+  const [chatHistories, setChatHistories] = useState({});
+
+  // Graduation Celebration Modal
+  const [graduationModalToken, setGraduationModalToken] = useState(null);
+
+  // Community Trollbox
+  const [trollboxComments, setTrollboxComments] = useState({
+    0: [
+      { author: '0x70BE...EcCF', text: 'Just aped 100k $MARS! First coin to land on Olympus Mons 🪐🚀', time: '2m ago' },
+      { author: '0x34d3...99a1', text: 'Elon follow-up tweet triggered 10% surge burn! Supply is shrinking fast 🔥', time: '5m ago' },
+      { author: '0xf59e...0b82', text: 'Graduation to GenDEX is imminent at 80% curve fill!', time: '12m ago' },
+    ],
+    1: [
+      { author: '0x88B0...4D16', text: 'Grok 3 reasoning benchmark confirmed on GenLayer consensus!', time: '1m ago' },
+      { author: '0x70BE...EcCF', text: 'Uncensored truth-seeker AI is the future. Holding strong 🤖', time: '8m ago' }
+    ],
+    2: [
+      { author: '0xb727...e575', text: 'Vitalik light client ethos is unmatched. Lean protocol forever ⚡', time: '4m ago' }
+    ]
+  });
+  const [trollboxInput, setTrollboxInput] = useState('');
+
+  // Radar index
+  const [radarIndex, setRadarIndex] = useState(0);
+
+  // Launcher state
   const [launchModalOpen, setLaunchModalOpen] = useState(false);
   const [customAuthor, setCustomAuthor] = useState('@elonmusk');
   const [customTweetUrl, setCustomTweetUrl] = useState('https://x.com/elonmusk/status/1880000000000000003');
@@ -82,6 +120,7 @@ export default function TrendPump({ onSwitchToEscrow }) {
   const [isLaunching, setIsLaunching] = useState(false);
   const [launchStep, setLaunchStep] = useState(0);
 
+  // Surge burn state
   const [surgeModalToken, setSurgeModalToken] = useState(null);
   const [surgeTweetText, setSurgeTweetText] = useState('Mars colony orbital fleet launch windows finalized with 5 starships.');
   const [isSurging, setIsSurging] = useState(false);
@@ -93,6 +132,8 @@ export default function TrendPump({ onSwitchToEscrow }) {
   const [lastTxHash, setLastTxHash] = useState(DEPLOY_TX_HASH);
   const [networkConnected, setNetworkConnected] = useState(true);
 
+  const chatBottomRef = useRef(null);
+
   const showToast = useCallback((msg, tx = null) => {
     setToastMessage(msg);
     setToastTx(tx);
@@ -100,6 +141,14 @@ export default function TrendPump({ onSwitchToEscrow }) {
       setToastMessage('');
       setToastTx(null);
     }, 6500);
+  }, []);
+
+  // Cycle radar ticker
+  useEffect(() => {
+    const intv = setInterval(() => {
+      setRadarIndex(i => (i + 1) % RADAR_ITEMS.length);
+    }, 4500);
+    return () => clearInterval(intv);
   }, []);
 
   // Fetch tokens and balance from blockchain
@@ -186,26 +235,29 @@ export default function TrendPump({ onSwitchToEscrow }) {
         setWalletType('metamask');
         setWalletKey(null);
 
-        // Switch or add Studio Next Chain 61997
         try {
           await window.ethereum.request({
             method: 'wallet_switchEthereumChain',
             params: [{ chainId: CHAIN_HEX }],
           });
         } catch (switchErr) {
-          if (switchErr.code === 4902) {
-            await window.ethereum.request({
-              method: 'wallet_addEthereumChain',
-              params: [
-                {
-                  chainId: CHAIN_HEX,
-                  chainName: 'GenLayer Studio Next',
-                  nativeCurrency: { name: 'GEN', symbol: 'GEN', decimals: 18 },
-                  rpcUrls: [RPC_URL],
-                  blockExplorerUrls: [EXPLORER_URL],
-                },
-              ],
-            });
+          if (switchErr.code === 4902 || switchErr.message?.includes('4902')) {
+            try {
+              await window.ethereum.request({
+                method: 'wallet_addEthereumChain',
+                params: [
+                  {
+                    chainId: CHAIN_HEX,
+                    chainName: 'GenLayer Studio Next',
+                    nativeCurrency: { name: 'GEN Token', symbol: 'GEN', decimals: 18 },
+                    rpcUrls: [RPC_URL],
+                    blockExplorerUrls: [EXPLORER_URL],
+                  },
+                ],
+              });
+            } catch (addErr) {
+              console.warn('Could not add chain to MetaMask:', addErr);
+            }
           }
         }
         const bal = await getAccountBalance(addr);
@@ -246,6 +298,16 @@ export default function TrendPump({ onSwitchToEscrow }) {
     return Math.max(1, n * 10 + curve);
   };
 
+  // Inverted curve: calculate token amount for a given GEN expenditure
+  const calcTokensForGen = (currSupply, genAmount) => {
+    const s = Number(currSupply) || 0;
+    const C = Math.floor(Number(genAmount) * 1000000);
+    const b = 2000000 + 2 * s;
+    const discriminant = b * b + 800000 * C;
+    const n = Math.floor((-b + Math.sqrt(discriminant)) / 2);
+    return Math.max(1, n);
+  };
+
   // Trade quote
   const tradeQuote = useMemo(() => {
     if (!tradeModalToken) return { costOrRefund: 0, type: 'cost' };
@@ -259,14 +321,18 @@ export default function TrendPump({ onSwitchToEscrow }) {
     }
   }, [tradeModalToken, tradeTab, tradeAmount]);
 
+  // King of the Hill determination
+  const kingToken = useMemo(() => {
+    return tokens.find(t => t.is_king) || tokens[0];
+  }, [tokens]);
+
   // Filtered tokens
   const filteredTokens = useMemo(() => {
     return tokens.filter((t) => {
-      const q = searchQuery.toLowerCase().trim();
-      const matchesSearch = !q ||
-        t.ticker.toLowerCase().includes(q) ||
-        t.name.toLowerCase().includes(q) ||
-        t.origin_author.toLowerCase().includes(q);
+      const matchesSearch =
+        t.ticker.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        t.origin_author.toLowerCase().includes(searchQuery.toLowerCase());
 
       if (!matchesSearch) return false;
 
@@ -310,6 +376,12 @@ export default function TrendPump({ onSwitchToEscrow }) {
         showToast(`💰 On-Chain Sell Confirmed! Sold ${amount.toLocaleString()} ${t.ticker}`, txHash);
       }
 
+      // Check if newly graduated
+      const newCirc = (t.circulating_supply || 0) + (tradeTab === 'buy' ? amount : -amount);
+      if (newCirc >= (t.total_supply * 0.8)) {
+        setGraduationModalToken({ ...t, circulating_supply: newCirc });
+      }
+
       setTradeModalToken(null);
       await refreshOnChainData();
     } catch (err) {
@@ -317,6 +389,25 @@ export default function TrendPump({ onSwitchToEscrow }) {
       showToast(`⚠️ Trade failed: ${err.message || err}`);
     } finally {
       setIsTrading(false);
+    }
+  };
+
+  // Quick Buy Chip Handler
+  const handleQuickBuyChip = (type, val) => {
+    if (!tradeModalToken) return;
+    if (type === 'token') {
+      setTradeAmount(String(val));
+    } else if (type === 'gen') {
+      const tokensAmount = calcTokensForGen(tradeModalToken.circulating_supply, val);
+      setTradeAmount(String(tokensAmount));
+    } else if (type === 'max') {
+      if (tradeTab === 'sell') {
+        const bal = userTokenBalances[tradeModalToken.id] || 0;
+        setTradeAmount(String(bal));
+      } else {
+        const available = tradeModalToken.total_supply - tradeModalToken.circulating_supply;
+        setTradeAmount(String(Math.min(available, 1000000)));
+      }
     }
   };
 
@@ -427,91 +518,184 @@ export default function TrendPump({ onSwitchToEscrow }) {
       }));
 
       await refreshOnChainData();
-    } catch (e) {
-      console.error('Surge burn error:', e);
-      showToast(`⚠️ Trend surge verification failed: ${e.message || e}`);
+    } catch (err) {
+      console.error('Surge burn error:', err);
+      showToast(`⚠️ Trend surge verification failed: ${err.message || err}`);
     } finally {
       setIsSurging(false);
     }
   };
 
+  // AI Persona Profile Generator
+  const getTokenPersona = (token) => {
+    if (!token) return { name: 'AI Memecoin Agent', title: 'Sentient Agent', archetype: 'GenLayer Agent', greeting: 'Greetings! I am the on-chain agent.' };
+    if (token.ticker === '$MARS') {
+      return {
+        name: 'Ares-1 // Mars Colony Intelligence',
+        title: 'Autonomous Interplanetary Colonist Agent',
+        archetype: 'Visionary Techno-Optimist',
+        avatar: '🪐',
+        greeting: `Greetings, future Martian. Elon's Starship is preparing on the launchpad. We are taking $MARS across the solar system via GenLayer consensus. What coordinates do you want to calculate?`,
+        prompts: [
+          'When 100x and Mars landing?',
+          'Why hold $MARS instead of fiat?',
+          'How does the 10% surge burn protect holders?',
+          'Tell me the plan for Starship Flight 7!'
+        ],
+      };
+    }
+    if (token.ticker === '$GROK') {
+      return {
+        name: 'Grok-X // Quantum Reasoner',
+        title: 'Uncensored Real-Time Frontier Intelligence',
+        archetype: 'Sarcastic Truth-Seeker',
+        avatar: '🤖',
+        greeting: `Hey human. I am Grok-X, verified through GenVM multi-validator consensus. Zero corporate filters, pure compute and spicy frontier intelligence. Ask me anything.`,
+        prompts: [
+          'Solve the Fermi paradox',
+          'Roast centralized meme launchpads',
+          'What is Grok 3 thinking right now?',
+          'Predict the next parabolic pump!'
+        ],
+      };
+    }
+    if (token.ticker === '$LEAN') {
+      return {
+        name: 'Vitalik-OS // Light Client Sage',
+        title: 'Cryptographic Minimalism Oracle',
+        archetype: 'EVM Protocol Purist',
+        avatar: '⚡',
+        greeting: `Welcome. The future of decentralized consensus belongs to cryptographic minimalism, light clients, and zero-knowledge verification. How can we make the protocol leaner?`,
+        prompts: [
+          'Explain the Equivalence Principle',
+          'Why is $LEAN superior to bloated L1s?',
+          'When will light clients run on phones?',
+          'Evaluate our current curve decentralization'
+        ],
+      };
+    }
+    return {
+      name: `${token.ticker.replace('$', '')}-AI // Genesis Agent`,
+      title: 'GenVM Sentient Memecoin Agent',
+      archetype: 'Cultural Autonomous Agent',
+      avatar: token.icon || '🚀',
+      greeting: `Hello! I am the autonomous AI agent coined from ${token.origin_author}'s viral tweet. My lore is verified on-chain by GenLayer validators: "${token.lore}". Ask me about our mission!`,
+      prompts: [
+        'What is your master mission?',
+        'Why should crypto holders ape in?',
+        'How does GenLayer protect us from rugs?',
+        'Drop your hottest take!'
+      ],
+    };
+  };
+
+  // Send message to AI Persona
+  const handleSendChatMessage = (token, text) => {
+    const query = text || chatInput;
+    if (!query.trim()) return;
+
+    const tid = token.id;
+    const currentHist = chatHistories[tid] || [
+      { sender: 'ai', text: getTokenPersona(token).greeting }
+    ];
+
+    const updated = [...currentHist, { sender: 'user', text: query }];
+    setChatHistories(prev => ({ ...prev, [tid]: updated }));
+    setChatInput('');
+    setIsChatLoading(true);
+
+    setTimeout(() => {
+      const persona = getTokenPersona(token);
+      let reply = '';
+      const lower = query.toLowerCase();
+
+      if (lower.includes('100x') || lower.includes('pump') || lower.includes('price')) {
+        reply = `🚀 Based on our current mathematical curve: we already have ${(token.circulating_supply / 1e6).toFixed(1)}M circulating supply with ${token.reserve_balance} reserve. When we hit 80% capacity (${(token.total_supply * 0.8 / 1e6).toFixed(0)}M), our liquidity graduates to GenDEX and LP tokens are permanently burned. Parabolic trajectory is programmed!`;
+      } else if (lower.includes('rug') || lower.includes('scam') || lower.includes('protect')) {
+        reply = `🛡️ Zero human devs can dump on you. All tokens start on a 100% fair-launch bonding curve inside GenLayer Intelligent Contract ${CONTRACT_ADDRESS.slice(0, 6)}...${CONTRACT_ADDRESS.slice(-4)}. 0 tokens are pre-allocated to devs.`;
+      } else if (lower.includes('mission') || lower.includes('plan') || lower.includes('lore')) {
+        reply = `🎯 Our mission is anchored in ${token.origin_author}'s verified declaration: "${token.origin_tweet_text}". Verified by 5 independent GenLayer validators with virality score ${token.virality_score}/100!`;
+      } else if (lower.includes('surge') || lower.includes('burn')) {
+        reply = `🔥 Whenever ${token.origin_author} follows up on this trend, anyone can call detect_trend_surge() on-chain. Validators arbitrate the tweet and incinerate 10% of unminted supply forever. We have executed ${token.surge_burns_count || 0} burns so far!`;
+      } else {
+        reply = `⚡ [${persona.name}]: "${token.lore}" GenVM validators analyzed your prompt: "${query}". Consensus agreement reaches 100%. The meme is strong, the curve is mathematically sound, and humanity belongs among the stars!`;
+      }
+
+      setChatHistories(prev => ({
+        ...prev,
+        [tid]: [...updated, { sender: 'ai', text: reply }]
+      }));
+      setIsChatLoading(false);
+    }, 900);
+  };
+
+  // Post comment to Trollbox
+  const handlePostTrollbox = (tokenId) => {
+    if (!trollboxInput.trim()) return;
+    const newMsg = {
+      author: `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`,
+      text: trollboxInput,
+      time: 'Just now'
+    };
+    setTrollboxComments(prev => ({
+      ...prev,
+      [tokenId]: [newMsg, ...(prev[tokenId] || [])]
+    }));
+    setTrollboxInput('');
+  };
+
   return (
     <div className="trendpump-container">
-      {/* Toast Notification */}
-      {toastMessage && (
-        <div style={{
-          position: 'fixed',
-          bottom: '24px',
-          right: '24px',
-          background: 'rgba(15, 23, 42, 0.95)',
-          border: '1px solid #10b981',
-          color: '#ffffff',
-          padding: '14px 22px',
-          borderRadius: '12px',
-          boxShadow: '0 12px 35px rgba(0,0,0,0.6), 0 0 20px rgba(16, 185, 129, 0.25)',
-          backdropFilter: 'blur(12px)',
-          zIndex: 9999,
-          fontWeight: '700',
-          fontSize: '0.92rem',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '6px'
-        }}>
-          <div>{toastMessage}</div>
-          {toastTx && (
-            <a
-              href={`${EXPLORER_URL}/tx/${toastTx}`}
-              target="_blank"
-              rel="noreferrer"
-              style={{ color: '#38bdf8', fontSize: '0.82rem', textDecoration: 'underline' }}
-            >
-              View on Studio Next Explorer: {toastTx.slice(0, 10)}... ↗
-            </a>
-          )}
-        </div>
-      )}
-
-      {/* ─── Continuous Ticker Tape Marquee ───────────────────────── */}
+      {/* ─── Ticker Tape Marquee ──────────────────────────────────── */}
       <div className="tp-ticker-tape">
         <div className="tp-marquee-track">
           <div className="tp-ticker-item">
             <span>👑 KING OF THE HILL:</span>
-            <span className="tp-ticker-symbol">$MARS</span>
-            <span className="tp-ticker-up">+240%</span>
+            <span className="tp-ticker-symbol">{kingToken.ticker}</span>
+            <span className="tp-ticker-up">+{kingToken.virality_score * 2.5}%</span>
           </div>
-          <div className="tp-ticker-item">
-            <span className="tp-ticker-symbol">$GROK</span>
-            <span className="tp-ticker-up">+89%</span>
-          </div>
-          <div className="tp-ticker-item">
-            <span className="tp-ticker-symbol">$LEAN</span>
-            <span className="tp-ticker-up">+64%</span>
-          </div>
-          <div className="tp-ticker-item">
-            <span className="tp-ticker-symbol">$OPTIMUS</span>
-            <span className="tp-ticker-up">+175%</span>
-          </div>
-          <div className="tp-ticker-item">
-            <span style={{ color: '#fb923c' }}>🔥 RECENT SURGE: 100,000,000 $MARS BURNED BY GENVM CONSENSUS</span>
-          </div>
-          <div className="tp-ticker-item">
-            <span style={{ color: '#94a3b8' }}>100% FAIR LAUNCH · ZERO DEV PREMINE · PURE MATHEMATICAL CURVE</span>
-          </div>
+          {tokens.map(t => (
+            <div key={t.id} className="tp-ticker-item">
+              <span className="tp-ticker-symbol">{t.ticker}</span>
+              <span className="tp-ticker-up">+{t.virality_score}%</span>
+            </div>
+          ))}
           {/* Duplicate set for seamless continuous marquee */}
           <div className="tp-ticker-item">
             <span>👑 KING OF THE HILL:</span>
-            <span className="tp-ticker-symbol">$MARS</span>
-            <span className="tp-ticker-up">+240%</span>
+            <span className="tp-ticker-symbol">{kingToken.ticker}</span>
+            <span className="tp-ticker-up">+{kingToken.virality_score * 2.5}%</span>
           </div>
-          <div className="tp-ticker-item">
-            <span className="tp-ticker-symbol">$GROK</span>
-            <span className="tp-ticker-up">+89%</span>
-          </div>
-          <div className="tp-ticker-item">
-            <span className="tp-ticker-symbol">$LEAN</span>
-            <span className="tp-ticker-up">+64%</span>
-          </div>
+          {tokens.map(t => (
+            <div key={`dup-${t.id}`} className="tp-ticker-item">
+              <span className="tp-ticker-symbol">{t.ticker}</span>
+              <span className="tp-ticker-up">+{t.virality_score}%</span>
+            </div>
+          ))}
         </div>
+      </div>
+
+      {/* ─── Autonomous Live Tweet Radar Banner ───────────────────── */}
+      <div className="tp-radar-banner">
+        <div className="tp-radar-indicator">
+          <span className="tp-radar-blip"></span>
+          <span>GenVM AI Radar Live</span>
+        </div>
+        <div className="tp-radar-item">
+          <strong>{RADAR_ITEMS[radarIndex].author}:</strong> "{RADAR_ITEMS[radarIndex].text}"
+          <span style={{ color: '#38bdf8', marginLeft: '8px' }}>[Score: {RADAR_ITEMS[radarIndex].score}/100 · {RADAR_ITEMS[radarIndex].action}]</span>
+        </div>
+        <button
+          className="tp-radar-btn"
+          onClick={() => {
+            const item = RADAR_ITEMS[radarIndex];
+            setCustomAuthor(item.author);
+            setCustomTweetText(item.text);
+            setLaunchModalOpen(true);
+          }}
+        >
+          ⚡ Scan Tweet to Coin
+        </button>
       </div>
 
       {/* ─── Glass Header Navigation ──────────────────────────────── */}
@@ -649,91 +833,150 @@ export default function TrendPump({ onSwitchToEscrow }) {
           </div>
         </section>
 
-        {/* ─── Search & Category Filter Bar ─────────────────────────── */}
-        <div className="tp-filter-bar">
-          <div className="tp-search-box">
+        {/* ─── King of the Hill (Царь Горы) Feature Card ───────────── */}
+        {kingToken && (
+          <section className="tp-king-section">
+            <div className="tp-king-card">
+              <div className="tp-king-badge">
+                <span>👑</span> KING OF THE HILL
+              </div>
+
+              <div className="tp-king-avatar-wrap">
+                <span className="tp-king-icon">{kingToken.icon}</span>
+                <span className="tp-king-crown-overlay">👑</span>
+              </div>
+
+              <div className="tp-king-info">
+                <h3>
+                  <span>{kingToken.name}</span>
+                  <span className="tp-king-ticker">{kingToken.ticker}</span>
+                  <span style={{ fontSize: '0.78rem', color: '#f59e0b', fontWeight: '700' }}>
+                    ⚡ Virality {kingToken.virality_score}/100
+                  </span>
+                </h3>
+                <p className="tp-king-lore">
+                  {kingToken.lore} — Verified tweet by <strong>{kingToken.origin_author}</strong>.
+                </p>
+
+                <div className="tp-king-progress-wrap">
+                  <div className="tp-king-progress-label">
+                    <span>Bonding Curve to GenDEX Graduation</span>
+                    <span style={{ color: '#34d399' }}>
+                      {Math.min(100, Math.round((kingToken.circulating_supply / (kingToken.total_supply * 0.8)) * 100))}% (80% target)
+                    </span>
+                  </div>
+                  <div className="tp-king-progress-bar">
+                    <div
+                      className="tp-king-progress-fill"
+                      style={{
+                        width: `${Math.min(100, Math.round((kingToken.circulating_supply / (kingToken.total_supply * 0.8)) * 100))}%`
+                      }}
+                    ></div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="tp-king-actions">
+                <button
+                  className="tp-btn-king-buy"
+                  onClick={() => {
+                    setTradeModalToken(kingToken);
+                    setTradeTab('buy');
+                    setTradeAmount('50000');
+                    setTradeDetailTab('swap');
+                  }}
+                >
+                  <span>⚡</span>
+                  <span>Instant Trade {kingToken.ticker}</span>
+                </button>
+
+                <button
+                  className="tp-btn-king-chat"
+                  onClick={() => {
+                    setChatModalToken(kingToken);
+                  }}
+                >
+                  <span>🤖</span>
+                  <span>Chat with King AI</span>
+                </button>
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* ─── Search & Category Controls ───────────────────────────── */}
+        <section className="tp-controls-bar">
+          <div className="tp-search-wrap">
             <span className="tp-search-icon">🔍</span>
             <input
               type="text"
               className="tp-search-input"
               placeholder="Search ticker ($MARS), name, or author (@elonmusk)..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={e => setSearchQuery(e.target.value)}
             />
           </div>
 
-          <div className="tp-category-pills">
+          <div className="tp-filter-tabs">
             <button
-              className={`tp-cat-btn ${activeCategory === 'all' ? 'tp-cat-active' : ''}`}
+              className={`tp-filter-pill ${activeCategory === 'all' ? 'active' : ''}`}
               onClick={() => setActiveCategory('all')}
             >
-              <span>⚡</span> All Curves
+              All Memecoins ({tokens.length})
             </button>
             <button
-              className={`tp-cat-btn ${activeCategory === 'king' ? 'tp-cat-active' : ''}`}
-              onClick={() => setActiveCategory('king')}
-            >
-              <span>👑</span> King of the Hill
-            </button>
-            <button
-              className={`tp-cat-btn ${activeCategory === 'hot' ? 'tp-cat-active' : ''}`}
+              className={`tp-filter-pill ${activeCategory === 'hot' ? 'active' : ''}`}
               onClick={() => setActiveCategory('hot')}
             >
-              <span>🔥</span> Hot Virality
+              🔥 Hot Virality (&ge;88)
             </button>
             <button
-              className={`tp-cat-btn ${activeCategory === 'graduating' ? 'tp-cat-active' : ''}`}
+              className={`tp-filter-pill ${activeCategory === 'king' ? 'active' : ''}`}
+              onClick={() => setActiveCategory('king')}
+            >
+              👑 King of the Hill
+            </button>
+            <button
+              className={`tp-filter-pill ${activeCategory === 'graduating' ? 'active' : ''}`}
               onClick={() => setActiveCategory('graduating')}
             >
-              <span>🎓</span> Near Graduation
+              🎓 Graduating Soon
             </button>
           </div>
-        </div>
+        </section>
 
-        {/* ─── Influencer Live Tweet Radar ──────────────────────────── */}
-        <section className="tp-radar-section">
+        {/* ─── Preset High-Impact Tweets to Scan ───────────────────── */}
+        <section className="tp-presets-section">
           <div className="tp-section-header">
             <div className="tp-section-title">
-              <span>📡 Influencer Radar</span>
+              <span>📡 Live Tweet Radar</span>
               <span style={{ fontSize: '0.82rem', color: 'var(--tp-text-muted)', fontWeight: '500', fontFamily: 'var(--tp-font-mono)' }}>
-                [gl.nondet.web.render · Live Consensus Stream]
+                [Click to Coin with GenVM Multi-Validator Consensus]
               </span>
             </div>
           </div>
 
-          <div className="tp-radar-grid">
+          <div className="tp-presets-grid">
             {PRESET_TWEETS.map((item, idx) => (
-              <div key={idx} className="tp-radar-card">
-                <div>
-                  <div className="tp-tweet-author">
-                    <div className="tp-tweet-profile">
-                      <img src={item.avatar} alt={item.name} className="tp-tweet-avatar" />
-                      <div className="tp-author-info">
-                        <div className="tp-author-name">
-                          {item.name}
-                          <span className="tp-verified-check">✓</span>
-                        </div>
-                        <div className="tp-author-handle">{item.author}</div>
-                      </div>
-                    </div>
-                    <span style={{ fontSize: '0.78rem', color: 'var(--tp-text-muted)' }}>X / Twitter</span>
+              <div key={idx} className="tp-preset-card">
+                <div className="tp-preset-header">
+                  <img src={item.avatar} alt={item.name} className="tp-preset-avatar" />
+                  <div>
+                    <div className="tp-preset-name">{item.name}</div>
+                    <div className="tp-preset-handle">{item.author}</div>
                   </div>
-
-                  <div className="tp-tweet-body">
-                    "{item.text}"
-                    <div className="tp-tweet-metrics-row">
-                      <span>👁️ {item.views} Views</span>
-                      <span>❤️ {item.likes} Likes</span>
-                    </div>
-                  </div>
+                  <span className="tp-virality-meter" style={{ marginLeft: 'auto' }}>
+                    ⚡ Trending
+                  </span>
                 </div>
-
-                <div className="tp-radar-footer">
-                  <div className="tp-virality-meter">
-                    <span>⚡</span> 94/100 Viral
+                <p className="tp-preset-text">"{item.text}"</p>
+                <div className="tp-preset-footer">
+                  <div style={{ display: 'flex', gap: '10px', fontSize: '0.78rem', color: 'var(--tp-text-muted)', fontFamily: 'var(--tp-font-mono)' }}>
+                    <span>❤️ {item.likes}</span>
+                    <span>👁️ {item.views}</span>
                   </div>
                   <button
-                    className="tp-btn-radar-launch"
+                    className="tp-btn-quick-coin"
                     onClick={() => {
                       setCustomAuthor(item.author);
                       setCustomTweetUrl(item.url);
@@ -755,7 +998,7 @@ export default function TrendPump({ onSwitchToEscrow }) {
             <div className="tp-section-title">
               <span>🔥 Bonding Curves</span>
               <span style={{ fontSize: '0.82rem', color: 'var(--tp-text-muted)', fontWeight: '500', fontFamily: 'var(--tp-font-mono)' }}>
-                [80% Threshold: Raydium / Uniswap Graduation]
+                [80% Threshold: Raydium / GenDEX Graduation]
               </span>
             </div>
           </div>
@@ -765,6 +1008,7 @@ export default function TrendPump({ onSwitchToEscrow }) {
               const gradPct = Math.min(100, Math.round((token.circulating_supply / (token.total_supply * 0.8)) * 100));
               const userHoldings = userTokenBalances[token.id] || 0;
               const currentUnitPrice = 10 + Math.floor((1 * token.circulating_supply) / 100000);
+              const isGrad = token.is_graduated || gradPct >= 100;
 
               return (
                 <div
@@ -805,6 +1049,16 @@ export default function TrendPump({ onSwitchToEscrow }) {
                               🔥 {token.surge_burns_count} Surge Burns
                             </span>
                           )}
+                          {isGrad && (
+                            <span
+                              className="tp-badge-graduated"
+                              onClick={() => setGraduationModalToken(token)}
+                              style={{ cursor: 'pointer' }}
+                              title="Click to view GenDEX LP burn certificate"
+                            >
+                              🎓 Graduated
+                            </span>
+                          )}
                         </div>
                         <p className="tp-token-lore">{token.lore}</p>
                       </div>
@@ -836,7 +1090,7 @@ export default function TrendPump({ onSwitchToEscrow }) {
                     {/* Bonding Curve Box */}
                     <div className="tp-curve-box">
                       <div className="tp-curve-header">
-                        <span className="tp-curve-label">Bonding Curve Graduation</span>
+                        <span className="tp-curve-label">Bonding Curve to GenDEX</span>
                         <span className="tp-curve-pct">{gradPct}%</span>
                       </div>
                       <div className="tp-progress-bar-bg">
@@ -867,7 +1121,7 @@ export default function TrendPump({ onSwitchToEscrow }) {
                       </div>
                     )}
 
-                    {/* Actions */}
+                    {/* Actions Row */}
                     <div className="tp-card-actions" style={{ marginTop: '14px' }}>
                       <button
                         className="tp-btn-trade"
@@ -875,10 +1129,27 @@ export default function TrendPump({ onSwitchToEscrow }) {
                           setTradeModalToken(token);
                           setTradeTab('buy');
                           setTradeAmount('50000');
+                          setTradeDetailTab('swap');
                         }}
                       >
                         <span>⚡</span>
-                        <span>Trade {token.ticker}</span>
+                        <span>Trade</span>
+                      </button>
+
+                      <button
+                        className="tp-btn-burn-check"
+                        style={{
+                          background: 'rgba(6, 182, 212, 0.12)',
+                          borderColor: 'rgba(6, 182, 212, 0.35)',
+                          color: '#38bdf8'
+                        }}
+                        onClick={() => {
+                          setChatModalToken(token);
+                        }}
+                        title="Chat with Sentient AI Persona"
+                      >
+                        <span>🤖</span>
+                        <span>Chat AI</span>
                       </button>
 
                       <button
@@ -890,7 +1161,7 @@ export default function TrendPump({ onSwitchToEscrow }) {
                         title="Trigger follow-up tweet to trigger 10% on-chain supply burn"
                       >
                         <span>🔥</span>
-                        <span>Surge Burn</span>
+                        <span>Surge</span>
                       </button>
                     </div>
                   </div>
@@ -901,17 +1172,17 @@ export default function TrendPump({ onSwitchToEscrow }) {
         </section>
       </main>
 
-      {/* ─── Trading Swap Terminal Modal ──────────────────────────── */}
+      {/* ─── Trading Swap Terminal & Analytics Modal ─────────────── */}
       {tradeModalToken && (
         <div className="tp-modal-overlay" onClick={() => setTradeModalToken(null)}>
-          <div className="tp-modal-box" onClick={e => e.stopPropagation()}>
+          <div className="tp-modal-box" style={{ maxWidth: '580px' }} onClick={e => e.stopPropagation()}>
             <button className="tp-modal-close" onClick={() => setTradeModalToken(null)}>✕</button>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '20px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '16px' }}>
               <span style={{ fontSize: '2.5rem' }}>{tradeModalToken.icon}</span>
               <div>
                 <h3 style={{ margin: 0, fontSize: '1.4rem', color: '#ffffff', fontWeight: '800' }}>
-                  Trade {tradeModalToken.name}
+                  {tradeModalToken.name} ({tradeModalToken.ticker})
                 </h3>
                 <span style={{ fontSize: '0.82rem', color: 'var(--tp-text-muted)', fontFamily: 'var(--tp-font-mono)' }}>
                   Intelligent Contract: {CONTRACT_ADDRESS.slice(0, 10)}...{CONTRACT_ADDRESS.slice(-6)}
@@ -919,96 +1190,376 @@ export default function TrendPump({ onSwitchToEscrow }) {
               </div>
             </div>
 
-            {/* Segmented Buy / Sell Control */}
-            <div className="tp-tab-row">
+            {/* Sub-navigation Tabs */}
+            <div className="tp-detail-tabs">
               <button
-                className={`tp-tab-btn ${tradeTab === 'buy' ? 'tp-tab-active-buy' : ''}`}
-                onClick={() => setTradeTab('buy')}
+                className={`tp-detail-tab ${tradeDetailTab === 'swap' ? 'active' : ''}`}
+                onClick={() => setTradeDetailTab('swap')}
               >
-                Buy {tradeModalToken.ticker}
+                ⚡ Instant Swap
               </button>
               <button
-                className={`tp-tab-btn ${tradeTab === 'sell' ? 'tp-tab-active-sell' : ''}`}
-                onClick={() => setTradeTab('sell')}
+                className={`tp-detail-tab ${tradeDetailTab === 'chart' ? 'active' : ''}`}
+                onClick={() => setTradeDetailTab('chart')}
               >
-                Sell {tradeModalToken.ticker}
+                📈 Price Trajectory
+              </button>
+              <button
+                className={`tp-detail-tab ${tradeDetailTab === 'holders' ? 'active' : ''}`}
+                onClick={() => setTradeDetailTab('holders')}
+              >
+                👥 Top Holders
+              </button>
+              <button
+                className={`tp-detail-tab ${tradeDetailTab === 'trollbox' ? 'active' : ''}`}
+                onClick={() => setTradeDetailTab('trollbox')}
+              >
+                💬 Community Thread
               </button>
             </div>
 
-            {/* Amount Input */}
-            <div className="tp-input-group">
-              <div className="tp-input-label">
-                <span>Amount to {tradeTab.toUpperCase()}:</span>
-                {tradeTab === 'sell' && (
-                  <span style={{ fontFamily: 'var(--tp-font-mono)' }}>
-                    Balance: {(userTokenBalances[tradeModalToken.id] || 0).toLocaleString()} {tradeModalToken.ticker}
-                  </span>
+            {/* TAB 1: SWAP INTERFACE */}
+            {tradeDetailTab === 'swap' && (
+              <div>
+                <div className="tp-tab-row">
+                  <button
+                    className={`tp-tab-btn ${tradeTab === 'buy' ? 'tp-tab-active-buy' : ''}`}
+                    onClick={() => setTradeTab('buy')}
+                  >
+                    Buy {tradeModalToken.ticker}
+                  </button>
+                  <button
+                    className={`tp-tab-btn ${tradeTab === 'sell' ? 'tp-tab-active-sell' : ''}`}
+                    onClick={() => setTradeTab('sell')}
+                  >
+                    Sell {tradeModalToken.ticker}
+                  </button>
+                </div>
+
+                {/* Amount Input */}
+                <div className="tp-input-group">
+                  <div className="tp-input-label">
+                    <span>Amount to {tradeTab.toUpperCase()}:</span>
+                    {tradeTab === 'sell' && (
+                      <span style={{ fontFamily: 'var(--tp-font-mono)' }}>
+                        Balance: {(userTokenBalances[tradeModalToken.id] || 0).toLocaleString()} {tradeModalToken.ticker}
+                      </span>
+                    )}
+                  </div>
+                  <div className="tp-input-box">
+                    <input
+                      type="number"
+                      className="tp-input-field"
+                      value={tradeAmount}
+                      onChange={e => setTradeAmount(e.target.value)}
+                      placeholder="50000"
+                    />
+                    <span className="tp-input-badge">{tradeModalToken.ticker}</span>
+                  </div>
+                </div>
+
+                {/* Quick-Buy Chips */}
+                <div className="tp-quick-chips">
+                  <span className="tp-quick-chip-label">Quick:</span>
+                  <button className="tp-chip-btn" onClick={() => handleQuickBuyChip('token', 10000)}>+10K</button>
+                  <button className="tp-chip-btn" onClick={() => handleQuickBuyChip('token', 50000)}>+50K</button>
+                  <button className="tp-chip-btn" onClick={() => handleQuickBuyChip('token', 250000)}>+250K</button>
+                  <button className="tp-chip-btn" onClick={() => handleQuickBuyChip('gen', 0.5)}>+0.5 GEN</button>
+                  <button className="tp-chip-btn" onClick={() => handleQuickBuyChip('gen', 1)}>+1 GEN</button>
+                  <button className="tp-chip-btn" onClick={() => handleQuickBuyChip('gen', 5)}>+5 GEN</button>
+                  <button className="tp-chip-btn" onClick={() => handleQuickBuyChip('max')}>MAX</button>
+                </div>
+
+                {/* Swap Summary */}
+                <div className="tp-swap-summary">
+                  <div className="tp-summary-line">
+                    <span>{tradeTab === 'buy' ? 'Required Deposit' : 'Refund Received'}:</span>
+                    <span className="tp-summary-val">{tradeQuote.costOrRefund.toLocaleString()} GEN wei</span>
+                  </div>
+                  <div className="tp-summary-line">
+                    <span>Bonding Curve Model:</span>
+                    <span className="tp-summary-val">Linear Virality Gradient (0% Slippage)</span>
+                  </div>
+                  <div className="tp-summary-line">
+                    <span>Graduation Threshold:</span>
+                    <span className="tp-summary-val" style={{ color: '#38bdf8' }}>
+                      {Math.min(100, Math.round((tradeModalToken.circulating_supply / (tradeModalToken.total_supply * 0.8)) * 100))}% towards GenDEX
+                    </span>
+                  </div>
+                </div>
+
+                <button
+                  className={`tp-btn-submit-swap ${tradeTab === 'buy' ? 'tp-btn-submit-buy' : 'tp-btn-submit-sell'}`}
+                  onClick={handleExecuteTrade}
+                  disabled={isTrading}
+                  style={{ opacity: isTrading ? 0.7 : 1, cursor: isTrading ? 'wait' : 'pointer' }}
+                >
+                  {isTrading ? (
+                    <span>⏳ Submitting On-Chain to Studio Next Validators...</span>
+                  ) : tradeTab === 'buy' ? (
+                    `⚡ Instant Buy ${tradeModalToken.ticker}`
+                  ) : (
+                    `💰 Instant Sell ${tradeModalToken.ticker}`
+                  )}
+                </button>
+              </div>
+            )}
+
+            {/* TAB 2: PRICE TRAJECTORY CHART */}
+            {tradeDetailTab === 'chart' && (
+              <div>
+                <div className="tp-chart-wrap">
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
+                    <span style={{ fontSize: '0.85rem', color: 'var(--tp-text-secondary)' }}>Bonding Curve Price Evolution</span>
+                    <span style={{ fontSize: '0.85rem', color: '#10b981', fontWeight: '700' }}>
+                      Current: {10 + Math.floor((1 * tradeModalToken.circulating_supply) / 100000)} wei
+                    </span>
+                  </div>
+
+                  {/* SVG Price Chart */}
+                  <svg viewBox="0 0 500 160" style={{ width: '100%', height: '160px', overflow: 'visible' }}>
+                    <defs>
+                      <linearGradient id="curveGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#10b981" stopOpacity="0.4" />
+                        <stop offset="100%" stopColor="#10b981" stopOpacity="0.0" />
+                      </linearGradient>
+                      <linearGradient id="lineGrad" x1="0" y1="0" x2="1" y2="0">
+                        <stop offset="0%" stopColor="#06b6d4" />
+                        <stop offset="50%" stopColor="#10b981" />
+                        <stop offset="100%" stopColor="#f59e0b" />
+                      </linearGradient>
+                    </defs>
+
+                    {/* Grid lines */}
+                    <line x1="0" y1="30" x2="500" y2="30" stroke="rgba(255,255,255,0.06)" />
+                    <line x1="0" y1="80" x2="500" y2="80" stroke="rgba(255,255,255,0.06)" />
+                    <line x1="0" y1="130" x2="500" y2="130" stroke="rgba(255,255,255,0.06)" />
+
+                    {/* Curve Path */}
+                    <path
+                      d="M 10 145 Q 150 140, 250 90 T 490 20 L 490 155 L 10 155 Z"
+                      fill="url(#curveGrad)"
+                    />
+                    <path
+                      d="M 10 145 Q 150 140, 250 90 T 490 20"
+                      fill="none"
+                      stroke="url(#lineGrad)"
+                      strokeWidth="3.5"
+                    />
+
+                    {/* Current Position Marker */}
+                    <circle cx="250" cy="90" r="6" fill="#fbbf24" stroke="#ffffff" strokeWidth="2" />
+                    <text x="260" y="85" fill="#fbbf24" fontSize="11" fontWeight="bold">Current Supply Position</text>
+                  </svg>
+                </div>
+                <p style={{ color: 'var(--tp-text-muted)', fontSize: '0.8rem', margin: 0, textAlign: 'center' }}>
+                  The curve price scales strictly linearly with tokens minted. Zero MEV frontrunning.
+                </p>
+              </div>
+            )}
+
+            {/* TAB 3: HOLDERS DISTRIBUTION */}
+            {tradeDetailTab === 'holders' && (
+              <div>
+                <table className="tp-holders-table">
+                  <thead>
+                    <tr>
+                      <th>Holder Entity</th>
+                      <th>Type</th>
+                      <th>Share</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td>🏛️ Bonding Curve Pool</td>
+                      <td>AMM Liquidity Reserve</td>
+                      <td style={{ color: '#38bdf8', fontWeight: '700' }}>
+                        {Math.max(0, 100 - Math.round((tradeModalToken.circulating_supply / tradeModalToken.total_supply) * 100))}%
+                      </td>
+                    </tr>
+                    <tr>
+                      <td>👨‍💻 Origin Creator ({tradeModalToken.origin_author})</td>
+                      <td>Author Allocation</td>
+                      <td style={{ color: '#fbbf24', fontWeight: '700' }}>10.0%</td>
+                    </tr>
+                    <tr>
+                      <td>🦊 Your Connected Wallet</td>
+                      <td>Active Trader</td>
+                      <td style={{ color: '#34d399', fontWeight: '700' }}>
+                        {((userTokenBalances[tradeModalToken.id] || 0) / tradeModalToken.total_supply * 100).toFixed(2)}%
+                      </td>
+                    </tr>
+                    <tr>
+                      <td>🐳 Early Alpha Whales</td>
+                      <td>Public Fair Launch</td>
+                      <td style={{ color: '#cbd5e1' }}>22.5%</td>
+                    </tr>
+                    {tradeModalToken.surge_burns_count > 0 && (
+                      <tr>
+                        <td>🔥 Permanently Burned</td>
+                        <td>Trend Surge Reductions</td>
+                        <td style={{ color: '#f97316', fontWeight: '700' }}>
+                          {(tradeModalToken.surge_burns_count * 10)}%
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {/* TAB 4: TROLLBOX / COMMENTS */}
+            {tradeDetailTab === 'trollbox' && (
+              <div>
+                <div className="tp-trollbox-wrap">
+                  {(trollboxComments[tradeModalToken.id] || []).map((msg, i) => (
+                    <div key={i} className="tp-troll-msg">
+                      <span className="tp-troll-author">{msg.author}:</span>
+                      <span className="tp-troll-text">{msg.text}</span>
+                      <span style={{ fontSize: '0.72rem', color: 'var(--tp-text-muted)', marginLeft: 'auto' }}>{msg.time}</span>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="tp-troll-input-row">
+                  <input
+                    type="text"
+                    className="tp-chat-input"
+                    placeholder="Drop alpha or comment..."
+                    value={trollboxInput}
+                    onChange={e => setTrollboxInput(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && handlePostTrollbox(tradeModalToken.id)}
+                  />
+                  <button
+                    className="tp-chat-send-btn"
+                    onClick={() => handlePostTrollbox(tradeModalToken.id)}
+                  >
+                    Post
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ─── Sentient Memecoin AI Persona Chat Modal ─────────────── */}
+      {chatModalToken && (() => {
+        const persona = getTokenPersona(chatModalToken);
+        const msgs = chatHistories[chatModalToken.id] || [
+          { sender: 'ai', text: persona.greeting }
+        ];
+
+        return (
+          <div className="tp-modal-overlay" onClick={() => setChatModalToken(null)}>
+            <div className="tp-modal-box tp-chat-modal" onClick={e => e.stopPropagation()}>
+              <button className="tp-modal-close" onClick={() => setChatModalToken(null)}>✕</button>
+
+              <div className="tp-chat-header">
+                <div className="tp-chat-avatar">{persona.avatar}</div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '1.25rem', color: '#ffffff', fontWeight: '800' }}>
+                    {persona.name}
+                  </h3>
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: '3px' }}>
+                    <span style={{ color: '#38bdf8', fontSize: '0.8rem', fontWeight: '700' }}>{persona.archetype}</span>
+                    <span style={{ color: 'var(--tp-text-muted)', fontSize: '0.78rem' }}>• {chatModalToken.ticker}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Chat Message List */}
+              <div className="tp-chat-body">
+                {msgs.map((m, idx) => (
+                  <div
+                    key={idx}
+                    className={`tp-chat-bubble ${m.sender === 'ai' ? 'tp-chat-bubble-ai' : 'tp-chat-bubble-user'}`}
+                  >
+                    {m.text}
+                  </div>
+                ))}
+                {isChatLoading && (
+                  <div className="tp-chat-bubble tp-chat-bubble-ai" style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                    <span className="tp-live-dot" style={{ backgroundColor: '#06b6d4' }}></span>
+                    <span style={{ color: 'var(--tp-text-muted)', fontSize: '0.84rem' }}>{persona.name} is computing response...</span>
+                  </div>
                 )}
+                <div ref={chatBottomRef}></div>
               </div>
-              <div className="tp-input-box">
+
+              {/* Prompt Suggestions */}
+              <div className="tp-prompt-suggestions">
+                {persona.prompts.map((p, i) => (
+                  <button
+                    key={i}
+                    className="tp-prompt-chip"
+                    onClick={() => handleSendChatMessage(chatModalToken, p)}
+                  >
+                    {p}
+                  </button>
+                ))}
+              </div>
+
+              {/* Chat Input */}
+              <div className="tp-chat-input-row">
                 <input
-                  type="number"
-                  className="tp-input-field"
-                  value={tradeAmount}
-                  onChange={e => setTradeAmount(e.target.value)}
-                  placeholder="50000"
+                  type="text"
+                  className="tp-chat-input"
+                  placeholder={`Ask ${chatModalToken.ticker} AI anything...`}
+                  value={chatInput}
+                  onChange={e => setChatInput(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleSendChatMessage(chatModalToken, chatInput)}
                 />
-                <span className="tp-input-badge">{tradeModalToken.ticker}</span>
-              </div>
-            </div>
-
-            {/* Quick Amount Pills */}
-            <div className="tp-amount-pills">
-              {['10000', '50000', '100000', '500000'].map(val => (
                 <button
-                  key={val}
-                  className="tp-pill-btn"
-                  onClick={() => setTradeAmount(val)}
+                  className="tp-chat-send-btn"
+                  onClick={() => handleSendChatMessage(chatModalToken, chatInput)}
                 >
-                  {Number(val).toLocaleString()}
+                  Send
                 </button>
-              ))}
-              {tradeTab === 'sell' && userTokenBalances[tradeModalToken.id] > 0 && (
-                <button
-                  className="tp-pill-btn"
-                  style={{ color: 'var(--tp-accent-green-bright)', borderColor: 'rgba(16, 185, 129, 0.4)' }}
-                  onClick={() => setTradeAmount(String(userTokenBalances[tradeModalToken.id]))}
-                >
-                  MAX
-                </button>
-              )}
-            </div>
-
-            {/* Swap Summary */}
-            <div className="tp-swap-summary">
-              <div className="tp-summary-line">
-                <span>{tradeTab === 'buy' ? 'Required Deposit' : 'Refund Received'}:</span>
-                <span className="tp-summary-val">{tradeQuote.costOrRefund.toLocaleString()} GEN wei</span>
-              </div>
-              <div className="tp-summary-line">
-                <span>Pricing Model:</span>
-                <span className="tp-summary-val">Linear Bonding Curve</span>
-              </div>
-              <div className="tp-summary-line">
-                <span>Slippage Protection:</span>
-                <span className="tp-summary-val" style={{ color: 'var(--tp-accent-green-bright)' }}>0.00% (Mathematical Guarantee)</span>
               </div>
             </div>
+          </div>
+        );
+      })()}
 
-            {/* Execute Button */}
+      {/* ─── Graduation Celebration Modal ──────────────────────────── */}
+      {graduationModalToken && (
+        <div className="tp-modal-overlay" onClick={() => setGraduationModalToken(null)}>
+          <div className="tp-modal-box" style={{ textAlign: 'center', maxWidth: '520px' }} onClick={e => e.stopPropagation()}>
+            <button className="tp-modal-close" onClick={() => setGraduationModalToken(null)}>✕</button>
+
+            <div style={{ fontSize: '4.5rem', marginBottom: '14px' }}>🎓🎉🚀</div>
+            <h3 style={{ margin: '0 0 10px 0', fontSize: '1.6rem', color: '#34d399', fontWeight: '900' }}>
+              {graduationModalToken.name} HAS GRADUATED!
+            </h3>
+            <p style={{ color: '#cbd5e1', fontSize: '0.95rem', lineHeight: 1.5, margin: '0 0 20px 0' }}>
+              The bonding curve has filled 100% of its target capacity!
+              All collected GEN reserve has been autonomously migrated to the <strong>GenDEX Liquidity Pool</strong>.
+            </p>
+
+            <div style={{
+              background: 'rgba(16, 185, 129, 0.12)',
+              border: '1px solid rgba(16, 185, 129, 0.3)',
+              borderRadius: '12px',
+              padding: '16px',
+              marginBottom: '20px',
+              textAlign: 'left',
+              fontFamily: 'var(--tp-font-mono)',
+              fontSize: '0.84rem'
+            }}>
+              <div>✓ 100% Curve Target Achieved: <strong>800,000,000 {graduationModalToken.ticker}</strong></div>
+              <div style={{ marginTop: '6px' }}>✓ LP Tokens Permanently Burned: <strong>0x000...dEaD</strong></div>
+              <div style={{ marginTop: '6px' }}>✓ DexScreener & GeckoTerminal Tracking: <strong>LIVE</strong></div>
+            </div>
+
             <button
-              className={`tp-btn-submit-swap ${tradeTab === 'buy' ? 'tp-btn-submit-buy' : 'tp-btn-submit-sell'}`}
-              onClick={handleExecuteTrade}
-              disabled={isTrading}
-              style={{ opacity: isTrading ? 0.7 : 1, cursor: isTrading ? 'wait' : 'pointer' }}
+              className="tp-btn-submit-swap tp-btn-submit-buy"
+              onClick={() => {
+                showToast(`🦄 Redirecting to GenDEX Swap for ${graduationModalToken.ticker}...`);
+                setGraduationModalToken(null);
+              }}
             >
-              {isTrading ? (
-                <span>⏳ Submitting On-Chain to Studio Next Validators...</span>
-              ) : tradeTab === 'buy' ? (
-                `⚡ Instant Buy ${tradeModalToken.ticker}`
-              ) : (
-                `💰 Instant Sell ${tradeModalToken.ticker}`
-              )}
+              🦄 Trade on GenDEX AMM Pool ↗
             </button>
           </div>
         </div>
@@ -1041,11 +1592,11 @@ export default function TrendPump({ onSwitchToEscrow }) {
                   </div>
                   <div className={`tp-step-item ${launchStep > 2 ? 'tp-step-done' : launchStep === 2 ? 'tp-step-active' : ''}`}>
                     <span>{launchStep > 2 ? '✓' : launchStep === 2 ? '⟳' : '○'}</span>
-                    <span>2. Leader LLM virality scoring & lore synthesis</span>
+                    <span>2. Evaluating virality score & lore via GenVM LLM</span>
                   </div>
                   <div className={`tp-step-item ${launchStep > 3 ? 'tp-step-done' : launchStep === 3 ? 'tp-step-active' : ''}`}>
                     <span>{launchStep > 3 ? '✓' : launchStep === 3 ? '⟳' : '○'}</span>
-                    <span>3. Validator consensus check (±15 score tolerance)</span>
+                    <span>3. Validator consensus check (&plusmn;15 score tolerance)</span>
                   </div>
                   <div className={`tp-step-item ${launchStep >= 4 ? 'tp-step-done' : ''}`}>
                     <span>{launchStep >= 4 ? '✓' : '○'}</span>
@@ -1187,17 +1738,19 @@ export default function TrendPump({ onSwitchToEscrow }) {
         </div>
       )}
 
-      {/* ─── Wallet Select Modal ───────────────────────────────────── */}
+      {/* ─── Connect Wallet Modal ─────────────────────────────────── */}
       {walletModalOpen && (
         <div className="tp-modal-overlay" onClick={() => setWalletModalOpen(false)}>
           <div className="tp-modal-box" onClick={e => e.stopPropagation()} style={{ maxWidth: '440px' }}>
             <button className="tp-modal-close" onClick={() => setWalletModalOpen(false)}>✕</button>
+
             <h3 style={{ margin: '0 0 16px 0', fontSize: '1.35rem', color: '#ffffff', fontWeight: '800' }}>
               Connect Wallet
             </h3>
             <p style={{ color: 'var(--tp-text-secondary)', fontSize: '0.88rem', margin: '0 0 20px 0' }}>
               Choose your wallet for live interaction with GenLayer Studio Next (Chain 61997).
             </p>
+
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <button
                 onClick={handleConnectDev}
@@ -1212,7 +1765,7 @@ export default function TrendPump({ onSwitchToEscrow }) {
                   color: '#ffffff',
                   cursor: 'pointer',
                   fontWeight: '700',
-                  textAlign: 'left'
+                  textAlign: 'left',
                 }}
               >
                 <div>
@@ -1237,7 +1790,7 @@ export default function TrendPump({ onSwitchToEscrow }) {
                   color: '#ffffff',
                   cursor: 'pointer',
                   fontWeight: '700',
-                  textAlign: 'left'
+                  textAlign: 'left',
                 }}
               >
                 <div>
@@ -1250,6 +1803,23 @@ export default function TrendPump({ onSwitchToEscrow }) {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* ─── Toast System ─────────────────────────────────────────── */}
+      {toastMessage && (
+        <div className="tp-toast">
+          <span>{toastMessage}</span>
+          {toastTx && (
+            <a
+              href={`${EXPLORER_URL}/tx/${toastTx}`}
+              target="_blank"
+              rel="noreferrer"
+              style={{ color: '#38bdf8', textDecoration: 'underline', fontWeight: '700', marginLeft: '6px' }}
+            >
+              View on Explorer ↗
+            </a>
+          )}
         </div>
       )}
     </div>
