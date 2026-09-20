@@ -112,6 +112,35 @@ export default function TrendPump({ onSwitchToEscrow }) {
   // Radar index
   const [radarIndex, setRadarIndex] = useState(0);
 
+  // Audio Sound Effects (Web Audio API)
+  const [audioEnabled, setAudioEnabled] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('tp_sound') !== 'false';
+    }
+    return true;
+  });
+
+  const toggleAudio = () => {
+    setAudioEnabled(prev => {
+      const next = !prev;
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('tp_sound', String(next));
+      }
+      return next;
+    });
+  };
+
+  // Live Trades Stream
+  const [liveTrades, setLiveTrades] = useState([
+    { id: 1, type: 'buy', ticker: '$MARS', amount: 50000, valueGen: '2.25', trader: '0x70BE...EcCF', time: '12s ago', tx: '0x4c00b9e3' },
+    { id: 2, type: 'buy', ticker: '$GROK', amount: 20000, valueGen: '0.85', trader: '0x34d3...99a1', time: '1m ago', tx: '0x2df0e0bf' },
+    { id: 3, type: 'sell', ticker: '$LEAN', amount: 15000, valueGen: '0.42', trader: '0xb727...e575', time: '3m ago', tx: '0xd2d2027c' },
+    { id: 4, type: 'buy', ticker: '$MARS', amount: 100000, valueGen: '4.80', trader: '0x1344...b138', time: '5m ago', tx: '0xa040db00' },
+  ]);
+
+  // Floating Live Trade Alert Bubble
+  const [floatingAlert, setFloatingAlert] = useState(null);
+
   // Launcher state
   const [launchModalOpen, setLaunchModalOpen] = useState(false);
   const [customAuthor, setCustomAuthor] = useState('@elonmusk');
@@ -133,6 +162,80 @@ export default function TrendPump({ onSwitchToEscrow }) {
   const [networkConnected, setNetworkConnected] = useState(true);
 
   const chatBottomRef = useRef(null);
+
+  // Synthesized Web Audio Sound Engine (Zero latency, zero asset downloads)
+  const playSound = useCallback((type) => {
+    try {
+      if (!audioEnabled || typeof window === 'undefined') return;
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const now = ctx.currentTime;
+
+      if (type === 'buy') {
+        const notes = [523.25, 659.25, 783.99, 1046.50];
+        notes.forEach((freq, idx) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(freq, now + idx * 0.06);
+          gain.gain.setValueAtTime(0.12, now + idx * 0.06);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.06 + 0.18);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(now + idx * 0.06);
+          osc.stop(now + idx * 0.06 + 0.2);
+        });
+      } else if (type === 'sell') {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(650, now);
+        osc.frequency.exponentialRampToValueAtTime(240, now + 0.22);
+        gain.gain.setValueAtTime(0.12, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.24);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.25);
+      } else if (type === 'faucet') {
+        [880, 1174.66, 1760].forEach((freq, i) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, now + i * 0.08);
+          gain.gain.setValueAtTime(0.1, now + i * 0.08);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.08 + 0.3);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(now + i * 0.08);
+          osc.stop(now + i * 0.08 + 0.35);
+        });
+      } else if (type === 'surge') {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(150, now);
+        osc.frequency.exponentialRampToValueAtTime(35, now + 0.5);
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.52);
+      }
+    } catch (e) {
+      // ignore audio context restrictions
+    }
+  }, [audioEnabled]);
+
+  const handleShareOnX = (token) => {
+    const text = encodeURIComponent(
+      `🚀 Coined $${token.ticker.replace('$', '')} on @GenLayer!\n\n` +
+      `🔥 100% Fair Launch Bonding Curve verified by GenVM AI consensus.\n` +
+      `🪐 Virality Score: ${token.virality_score}/100 · ${token.name}\n\n` +
+      `Trade & Chat with the AI persona live: https://genfun.arcstones.xyz/`
+    );
+    window.open(`https://twitter.com/intent/tweet?text=${text}`, '_blank');
+  };
 
   const showToast = useCallback((msg, tx = null) => {
     setToastMessage(msg);
@@ -376,6 +479,21 @@ export default function TrendPump({ onSwitchToEscrow }) {
         showToast(`💰 On-Chain Sell Confirmed! Sold ${amount.toLocaleString()} ${t.ticker}`, txHash);
       }
 
+      playSound(tradeTab);
+      const newTradeItem = {
+        id: Date.now(),
+        type: tradeTab,
+        ticker: t.ticker,
+        amount,
+        valueGen: (tradeQuote.costOrRefund / 1e6).toFixed(2),
+        trader: `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`,
+        time: 'Just now',
+        tx: txHash.slice(0, 10),
+      };
+      setLiveTrades(prev => [newTradeItem, ...prev.slice(0, 19)]);
+      setFloatingAlert(newTradeItem);
+      setTimeout(() => setFloatingAlert(null), 5000);
+
       // Check if newly graduated
       const newCirc = (t.circulating_supply || 0) + (tradeTab === 'buy' ? amount : -amount);
       if (newCirc >= (t.total_supply * 0.8)) {
@@ -428,6 +546,7 @@ export default function TrendPump({ onSwitchToEscrow }) {
         newBal = await getAccountBalance(walletAddress);
         if (parseFloat(newBal) > parseFloat(initialBal)) break;
       }
+      playSound('faucet');
       setUserGenBalance(newBal);
       showToast(`🎁 Successfully transferred 10 GEN on Studio Next! Balance: ${newBal} GEN`, txHash);
     } catch (e) {
@@ -493,6 +612,7 @@ export default function TrendPump({ onSwitchToEscrow }) {
         surgeTweetText
       );
 
+      playSound('surge');
       setLastTxHash(res.txHash);
       showToast(`🔥 TREND SURGE VERIFIED! 10% unminted supply burned by consensus!`, res.txHash);
 
@@ -756,6 +876,15 @@ export default function TrendPump({ onSwitchToEscrow }) {
               <span style={{ color: '#ffffff' }}>({userGenBalance} GEN)</span>
             </button>
 
+            <button
+              className={`tp-btn-audio ${audioEnabled ? 'active' : ''}`}
+              onClick={toggleAudio}
+              title={audioEnabled ? "Click to Mute Sound Effects" : "Click to Unmute Sound Effects"}
+            >
+              <span>{audioEnabled ? '🔊' : '🔇'}</span>
+              <span>Sound: {audioEnabled ? 'ON' : 'OFF'}</span>
+            </button>
+
             <button className="tp-btn-faucet" onClick={handleClaimFaucet} title="Get 10 GEN from Studio Next Faucet">
               <span>🎁</span>
               <span>Faucet (+10 GEN)</span>
@@ -898,6 +1027,15 @@ export default function TrendPump({ onSwitchToEscrow }) {
                 >
                   <span>🤖</span>
                   <span>Chat with King AI</span>
+                </button>
+
+                <button
+                  className="tp-btn-share-x"
+                  onClick={() => handleShareOnX(kingToken)}
+                  title="Share King of the Hill on X/Twitter"
+                >
+                  <span>🐦</span>
+                  <span>Share King on X</span>
                 </button>
               </div>
             </div>
@@ -1163,6 +1301,16 @@ export default function TrendPump({ onSwitchToEscrow }) {
                         <span>🔥</span>
                         <span>Surge</span>
                       </button>
+
+                      <button
+                        className="tp-btn-burn-check"
+                        style={{ background: 'rgba(56, 189, 248, 0.08)', borderColor: 'rgba(56, 189, 248, 0.25)', color: '#38bdf8' }}
+                        onClick={() => handleShareOnX(token)}
+                        title="Share on X"
+                      >
+                        <span>🐦</span>
+                        <span>Share</span>
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -1215,6 +1363,12 @@ export default function TrendPump({ onSwitchToEscrow }) {
                 onClick={() => setTradeDetailTab('trollbox')}
               >
                 💬 Community Thread
+              </button>
+              <button
+                className={`tp-detail-tab ${tradeDetailTab === 'trades' ? 'active' : ''}`}
+                onClick={() => setTradeDetailTab('trades')}
+              >
+                📜 Live Trades
               </button>
             </div>
 
@@ -1403,6 +1557,38 @@ export default function TrendPump({ onSwitchToEscrow }) {
                         </td>
                       </tr>
                     )}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {/* TAB 5: LIVE TRADES STREAM */}
+            {tradeDetailTab === 'trades' && (
+              <div>
+                <table className="tp-trades-table">
+                  <thead>
+                    <tr>
+                      <th>Action</th>
+                      <th>Tokens</th>
+                      <th>Value (GEN)</th>
+                      <th>Trader</th>
+                      <th>Time</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {liveTrades.filter(tr => tr.ticker === tradeModalToken.ticker || true).map((tr) => (
+                      <tr key={tr.id}>
+                        <td>
+                          <span className={`tp-trade-badge ${tr.type === 'buy' ? 'tp-trade-badge-buy' : 'tp-trade-badge-sell'}`}>
+                            {tr.type}
+                          </span>
+                        </td>
+                        <td style={{ fontWeight: '700' }}>{tr.amount.toLocaleString()} {tradeModalToken.ticker}</td>
+                        <td style={{ color: '#fbbf24' }}>{tr.valueGen} GEN</td>
+                        <td style={{ fontFamily: 'var(--tp-font-mono)', fontSize: '0.78rem' }}>{tr.trader}</td>
+                        <td style={{ color: 'var(--tp-text-muted)', fontSize: '0.75rem' }}>{tr.time}</td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>
@@ -1801,6 +1987,25 @@ export default function TrendPump({ onSwitchToEscrow }) {
                 </div>
                 {walletType === 'metamask' && <span style={{ color: '#10b981' }}>✓ Active</span>}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── Floating Live Trade Alert (Bottom-Left) ────────────── */}
+      {floatingAlert && (
+        <div className="tp-floating-trades-container">
+          <div className="tp-floating-trade-item">
+            <span className="tp-floating-trade-avatar">
+              {floatingAlert.type === 'buy' ? '🟢' : '🔴'}
+            </span>
+            <div>
+              <div style={{ fontWeight: '800' }}>
+                {floatingAlert.trader} {floatingAlert.type === 'buy' ? 'bought' : 'sold'} {floatingAlert.amount.toLocaleString()} {floatingAlert.ticker}
+              </div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--tp-text-secondary)', marginTop: '2px' }}>
+                Value: {floatingAlert.valueGen} GEN · Confirmed on Studio Next
+              </div>
             </div>
           </div>
         </div>
