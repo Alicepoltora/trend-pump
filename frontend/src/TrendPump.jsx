@@ -25,7 +25,6 @@ const PRESET_TWEETS = [
   {
     author: '@elonmusk',
     name: 'Elon Musk',
-    avatar: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=100&auto=format&fit=crop&q=80',
     text: 'Optimus humanoid robots will outnumber humans by 2040. The manufacturing paradigm has shifted forever.',
     url: 'https://x.com/elonmusk/status/1880000000000000003',
     suggested_ticker: '$OPTIMUS',
@@ -36,7 +35,6 @@ const PRESET_TWEETS = [
   {
     author: '@sama',
     name: 'Sam Altman',
-    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&auto=format&fit=crop&q=80',
     text: 'Autonomous agents doing continuous multi-week engineering tasks are becoming genuinely capable.',
     url: 'https://x.com/sama/status/1880000000000000004',
     suggested_ticker: '$AGI',
@@ -47,7 +45,6 @@ const PRESET_TWEETS = [
   {
     author: '@vitalikbuterin',
     name: 'Vitalik Buterin',
-    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80',
     text: 'Zk-SNARKs and AI consensus will converge to form the ultimate trust-minimized financial layer.',
     url: 'https://x.com/vitalikbuterin/status/1880000000000000005',
     suggested_ticker: '$SNARK',
@@ -271,7 +268,6 @@ export default function TrendPump({ onSwitchToEscrow }) {
           }).concat(Array.from(map.values()).map(oct => ({
             ...oct,
             icon: oct.ticker === '$MARS' ? '🪐' : oct.ticker === '$GROK' ? '🤖' : oct.ticker === '$LEAN' ? '⚡' : '🚀',
-            avatar: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=100&auto=format&fit=crop&q=80',
             likes: '50K+',
             retweets: '10K+',
             views: '2.5M',
@@ -833,17 +829,16 @@ export default function TrendPump({ onSwitchToEscrow }) {
             </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+          <div className="tp-header-actions">
             <a
               href={`${EXPLORER_URL}/address/${CONTRACT_ADDRESS}`}
               target="_blank"
               rel="noreferrer"
-              className="tp-network-pill"
-              style={{ textDecoration: 'none', color: 'inherit' }}
+              className="tp-network-pill tp-pill-contract"
               title="View deployed Intelligent Contract on GenLayer Explorer"
             >
               <span className="tp-live-dot" style={{ backgroundColor: networkConnected ? '#10b981' : '#f59e0b' }}></span>
-              <span>Contract: {CONTRACT_ADDRESS.slice(0, 6)}...{CONTRACT_ADDRESS.slice(-4)} ↗</span>
+              <span>{CONTRACT_ADDRESS.slice(0, 6)}...{CONTRACT_ADDRESS.slice(-4)} ↗</span>
             </a>
 
             {lastTxHash && (
@@ -851,66 +846,48 @@ export default function TrendPump({ onSwitchToEscrow }) {
                 href={`${EXPLORER_URL}/tx/${lastTxHash}`}
                 target="_blank"
                 rel="noreferrer"
-                className="tp-network-pill"
-                style={{ textDecoration: 'none', color: '#60a5fa', borderColor: 'rgba(96, 165, 250, 0.4)' }}
+                className="tp-network-pill tp-pill-tx"
                 title="View latest confirmed transaction on GenLayer Studio Next Explorer"
               >
-                🔗 Latest Tx: {lastTxHash.slice(0, 8)}... ↗
+                <span>🔗 Tx: {lastTxHash.slice(0, 6)}... ↗</span>
               </a>
             )}
 
             <button
-              className="tp-network-pill"
+              className="tp-network-pill tp-pill-wallet"
               onClick={() => setWalletModalOpen(true)}
-              style={{
-                cursor: 'pointer',
-                background: 'rgba(16, 185, 129, 0.1)',
-                borderColor: 'rgba(16, 185, 129, 0.4)',
-                color: '#34d399',
-                fontWeight: '800'
-              }}
               title="Click to switch wallet"
             >
-              <span>{walletType === 'metamask' ? '🦊 MetaMask' : '⚡ Studio Dev'}</span>
+              <span>{walletType === 'metamask' ? '🦊' : '⚡'}</span>
               <span>{walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}</span>
-              <span style={{ color: '#ffffff' }}>({userGenBalance} GEN)</span>
+              <span className="tp-wallet-balance-num">({userGenBalance} GEN)</span>
             </button>
 
             <button
-              className={`tp-btn-audio ${audioEnabled ? 'active' : ''}`}
+              className={`tp-btn-audio-compact ${audioEnabled ? 'active' : ''}`}
               onClick={toggleAudio}
               title={audioEnabled ? "Click to Mute Sound Effects" : "Click to Unmute Sound Effects"}
             >
               <span>{audioEnabled ? '🔊' : '🔇'}</span>
-              <span>Sound: {audioEnabled ? 'ON' : 'OFF'}</span>
             </button>
 
             <button className="tp-btn-faucet" onClick={handleClaimFaucet} title="Get 10 GEN from Studio Next Faucet">
               <span>🎁</span>
-              <span>Faucet (+10 GEN)</span>
+              <span>+10 GEN</span>
             </button>
 
             <button className="tp-btn-launch" onClick={() => setLaunchModalOpen(true)}>
-              <span>🤖</span>
-              <span>Auto-Launch Token</span>
+              <span>🚀</span>
+              <span>Auto-Launch</span>
             </button>
 
             {onSwitchToEscrow && (
               <button
+                className="tp-btn-escrow"
                 onClick={onSwitchToEscrow}
-                style={{
-                  background: 'rgba(255, 255, 255, 0.05)',
-                  color: '#94a3b8',
-                  border: '1px solid rgba(255, 255, 255, 0.12)',
-                  padding: '8px 14px',
-                  borderRadius: '10px',
-                  fontWeight: '700',
-                  fontSize: '0.85rem',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                }}
+                title="Switch to AgentEscrow Intelligent Contract App"
               >
-                ⚖️ Switch to AgentEscrow
+                ⚖️ Escrow
               </button>
             )}
           </div>
@@ -966,22 +943,20 @@ export default function TrendPump({ onSwitchToEscrow }) {
         {kingToken && (
           <section className="tp-king-section">
             <div className="tp-king-card">
-              <div className="tp-king-badge">
-                <span>👑</span> KING OF THE HILL
-              </div>
-
               <div className="tp-king-avatar-wrap">
                 <span className="tp-king-icon">{kingToken.icon}</span>
                 <span className="tp-king-crown-overlay">👑</span>
               </div>
 
               <div className="tp-king-info">
+                <div className="tp-king-meta-row">
+                  <span className="tp-king-badge">👑 KING OF THE HILL</span>
+                  <span className="tp-king-virality-pill">⚡ Virality {kingToken.virality_score}/100</span>
+                </div>
+
                 <h3>
                   <span>{kingToken.name}</span>
                   <span className="tp-king-ticker">{kingToken.ticker}</span>
-                  <span style={{ fontSize: '0.78rem', color: '#f59e0b', fontWeight: '700' }}>
-                    ⚡ Virality {kingToken.virality_score}/100
-                  </span>
                 </h3>
                 <p className="tp-king-lore">
                   {kingToken.lore} — Verified tweet by <strong>{kingToken.origin_author}</strong>.
@@ -1026,7 +1001,7 @@ export default function TrendPump({ onSwitchToEscrow }) {
                   }}
                 >
                   <span>🤖</span>
-                  <span>Chat with King AI</span>
+                  <span>AI Persona</span>
                 </button>
 
                 <button
@@ -1043,8 +1018,8 @@ export default function TrendPump({ onSwitchToEscrow }) {
         )}
 
         {/* ─── Search & Category Controls ───────────────────────────── */}
-        <section className="tp-controls-bar">
-          <div className="tp-search-wrap">
+        <section className="tp-filter-bar">
+          <div className="tp-search-box">
             <span className="tp-search-icon">🔍</span>
             <input
               type="text"
@@ -1055,27 +1030,27 @@ export default function TrendPump({ onSwitchToEscrow }) {
             />
           </div>
 
-          <div className="tp-filter-tabs">
+          <div className="tp-category-pills">
             <button
-              className={`tp-filter-pill ${activeCategory === 'all' ? 'active' : ''}`}
+              className={`tp-cat-btn ${activeCategory === 'all' ? 'tp-cat-active' : ''}`}
               onClick={() => setActiveCategory('all')}
             >
               All Memecoins ({tokens.length})
             </button>
             <button
-              className={`tp-filter-pill ${activeCategory === 'hot' ? 'active' : ''}`}
+              className={`tp-cat-btn ${activeCategory === 'hot' ? 'tp-cat-active' : ''}`}
               onClick={() => setActiveCategory('hot')}
             >
               🔥 Hot Virality (&ge;88)
             </button>
             <button
-              className={`tp-filter-pill ${activeCategory === 'king' ? 'active' : ''}`}
+              className={`tp-cat-btn ${activeCategory === 'king' ? 'tp-cat-active' : ''}`}
               onClick={() => setActiveCategory('king')}
             >
               👑 King of the Hill
             </button>
             <button
-              className={`tp-filter-pill ${activeCategory === 'graduating' ? 'active' : ''}`}
+              className={`tp-cat-btn ${activeCategory === 'graduating' ? 'tp-cat-active' : ''}`}
               onClick={() => setActiveCategory('graduating')}
             >
               🎓 Graduating Soon
@@ -1084,37 +1059,47 @@ export default function TrendPump({ onSwitchToEscrow }) {
         </section>
 
         {/* ─── Preset High-Impact Tweets to Scan ───────────────────── */}
-        <section className="tp-presets-section">
+        <section className="tp-radar-section">
           <div className="tp-section-header">
             <div className="tp-section-title">
               <span>📡 Live Tweet Radar</span>
               <span style={{ fontSize: '0.82rem', color: 'var(--tp-text-muted)', fontWeight: '500', fontFamily: 'var(--tp-font-mono)' }}>
-                [Click to Coin with GenVM Multi-Validator Consensus]
+                [GenVM Multi-Validator Consensus]
               </span>
             </div>
           </div>
 
-          <div className="tp-presets-grid">
+          <div className="tp-radar-grid">
             {PRESET_TWEETS.map((item, idx) => (
-              <div key={idx} className="tp-preset-card">
-                <div className="tp-preset-header">
-                  <img src={item.avatar} alt={item.name} className="tp-preset-avatar" />
-                  <div>
-                    <div className="tp-preset-name">{item.name}</div>
-                    <div className="tp-preset-handle">{item.author}</div>
+              <div key={idx} className="tp-radar-card">
+                <div>
+                  <div className="tp-tweet-author">
+                    <div className="tp-tweet-profile">
+                      <div className="tp-x-author-badge" title="Public Verified X Post">𝕏</div>
+                      <div className="tp-author-info">
+                        <div className="tp-author-name">
+                          <span>{item.name}</span>
+                          <span className="tp-verified-check" title="Verified Public Account">✓</span>
+                        </div>
+                        <div className="tp-author-handle">{item.author}</div>
+                      </div>
+                    </div>
+                    <span className="tp-virality-meter">
+                      ⚡ Trending
+                    </span>
                   </div>
-                  <span className="tp-virality-meter" style={{ marginLeft: 'auto' }}>
-                    ⚡ Trending
-                  </span>
+                  <div className="tp-tweet-body">
+                    "{item.text}"
+                  </div>
                 </div>
-                <p className="tp-preset-text">"{item.text}"</p>
-                <div className="tp-preset-footer">
-                  <div style={{ display: 'flex', gap: '10px', fontSize: '0.78rem', color: 'var(--tp-text-muted)', fontFamily: 'var(--tp-font-mono)' }}>
+
+                <div className="tp-radar-footer">
+                  <div className="tp-tweet-metrics-row">
                     <span>❤️ {item.likes}</span>
                     <span>👁️ {item.views}</span>
                   </div>
                   <button
-                    className="tp-btn-quick-coin"
+                    className="tp-btn-radar-launch"
                     onClick={() => {
                       setCustomAuthor(item.author);
                       setCustomTweetUrl(item.url);
@@ -1153,12 +1138,6 @@ export default function TrendPump({ onSwitchToEscrow }) {
                   key={token.id}
                   className={`tp-token-card ${token.is_king ? 'tp-card-king' : ''}`}
                 >
-                  {token.is_king && (
-                    <div className="tp-king-tag">
-                      <span>👑</span> King of the Hill
-                    </div>
-                  )}
-
                   <div>
                     {/* Header */}
                     <div className="tp-token-header">
@@ -1170,20 +1149,17 @@ export default function TrendPump({ onSwitchToEscrow }) {
                           <span className="tp-token-name">{token.name}</span>
                           <span className="tp-token-ticker">{token.ticker}</span>
                         </div>
-                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                        <div className="tp-token-badges-row">
+                          {token.is_king && (
+                            <span className="tp-king-inline-tag">
+                              👑 King of the Hill
+                            </span>
+                          )}
                           <span className="tp-virality-meter" style={{ padding: '2px 8px', fontSize: '0.74rem' }}>
                             ⚡ Virality {token.virality_score}/100
                           </span>
                           {token.surge_burns_count > 0 && (
-                            <span style={{
-                              fontSize: '0.74rem',
-                              color: 'var(--tp-accent-orange-bright)',
-                              background: 'rgba(249, 115, 22, 0.15)',
-                              padding: '2px 8px',
-                              borderRadius: '9999px',
-                              border: '1px solid rgba(249, 115, 22, 0.3)',
-                              fontWeight: '700'
-                            }}>
+                            <span className="tp-surge-burns-tag">
                               🔥 {token.surge_burns_count} Surge Burns
                             </span>
                           )}
@@ -1260,9 +1236,9 @@ export default function TrendPump({ onSwitchToEscrow }) {
                     )}
 
                     {/* Actions Row */}
-                    <div className="tp-card-actions" style={{ marginTop: '14px' }}>
+                    <div className="tp-card-actions-v2">
                       <button
-                        className="tp-btn-trade"
+                        className="tp-btn-card-trade-primary"
                         onClick={() => {
                           setTradeModalToken(token);
                           setTradeTab('buy');
@@ -1271,46 +1247,42 @@ export default function TrendPump({ onSwitchToEscrow }) {
                         }}
                       >
                         <span>⚡</span>
-                        <span>Trade</span>
+                        <span>Instant Trade {token.ticker}</span>
                       </button>
 
-                      <button
-                        className="tp-btn-burn-check"
-                        style={{
-                          background: 'rgba(6, 182, 212, 0.12)',
-                          borderColor: 'rgba(6, 182, 212, 0.35)',
-                          color: '#38bdf8'
-                        }}
-                        onClick={() => {
-                          setChatModalToken(token);
-                        }}
-                        title="Chat with Sentient AI Persona"
-                      >
-                        <span>🤖</span>
-                        <span>Chat AI</span>
-                      </button>
+                      <div className="tp-card-actions-subgrid">
+                        <button
+                          className="tp-btn-card-sub tp-btn-sub-ai"
+                          onClick={() => {
+                            setChatModalToken(token);
+                          }}
+                          title="Chat with Sentient AI Persona"
+                        >
+                          <span>🤖</span>
+                          <span>AI Persona</span>
+                        </button>
 
-                      <button
-                        className="tp-btn-burn-check"
-                        onClick={() => {
-                          setSurgeModalToken(token);
-                          setSurgeSuccess(null);
-                        }}
-                        title="Trigger follow-up tweet to trigger 10% on-chain supply burn"
-                      >
-                        <span>🔥</span>
-                        <span>Surge</span>
-                      </button>
+                        <button
+                          className="tp-btn-card-sub tp-btn-sub-surge"
+                          onClick={() => {
+                            setSurgeModalToken(token);
+                            setSurgeSuccess(null);
+                          }}
+                          title="Trigger follow-up tweet to trigger 10% on-chain supply burn"
+                        >
+                          <span>🔥</span>
+                          <span>Surge Burn</span>
+                        </button>
 
-                      <button
-                        className="tp-btn-burn-check"
-                        style={{ background: 'rgba(56, 189, 248, 0.08)', borderColor: 'rgba(56, 189, 248, 0.25)', color: '#38bdf8' }}
-                        onClick={() => handleShareOnX(token)}
-                        title="Share on X"
-                      >
-                        <span>🐦</span>
-                        <span>Share</span>
-                      </button>
+                        <button
+                          className="tp-btn-card-sub tp-btn-sub-share"
+                          onClick={() => handleShareOnX(token)}
+                          title="Share on X"
+                        >
+                          <span>🐦</span>
+                          <span>Share</span>
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
